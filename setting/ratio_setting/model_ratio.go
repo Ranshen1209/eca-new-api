@@ -208,6 +208,8 @@ var defaultModelRatio = map[string]float64{
 	"glm-4-long":                                0.001 * RMB,
 	"glm-4-flash":                               0,
 	"glm-4v-plus":                               0.01 * RMB,
+	"glm-5.3":                                   8.0 / 1000 * RMB, // ￥8 / 1M list input, not promo
+	"glm-5.3-flash":                             0.8 / 1000 * RMB, // ￥0.8 / 1M list input (1/10 of glm-5.3), not 5-fold promo
 	"qwen-turbo":                                0.8572, // ￥0.012 / 1k tokens
 	"qwen-plus":                                 10,     // ￥0.14 / 1k tokens
 	"text-embedding-v1":                         0.05,   // ￥0.0007 / 1k tokens
@@ -239,9 +241,12 @@ var defaultModelRatio = map[string]float64{
 	"command-r-plus":         1.5,
 	"command-r-08-2024":      0.075,
 	"command-r-plus-08-2024": 1.25,
-	"deepseek-chat":          0.27 / 2,
-	"deepseek-coder":         0.27 / 2,
-	"deepseek-reasoner":      0.55 / 2, // 0.55 / 1k tokens
+	"deepseek-chat":                0.27 / 2,
+	"deepseek-coder":               0.27 / 2,
+	"deepseek-reasoner":            0.55 / 2, // 0.55 / 1k tokens
+	"deepseek-v4-flash":            3.0 / 1000 * RMB, // peak ￥3 / 1M input
+	"deepseek-v4-flash-vision-exp": 3.0 / 1000 * RMB, // peak, same as flash
+	"deepseek-v4-pro":              9.0 / 1000 * RMB, // peak ￥9 / 1M input
 	// Perplexity online 模型对搜索额外收费，有需要应自行调整，此处不计入搜索费用
 	"llama-3-sonar-small-32k-chat":   0.2 / 1000 * USD,
 	"llama-3-sonar-small-32k-online": 0.2 / 1000 * USD,
@@ -326,10 +331,15 @@ var modelRatioMap = types.NewRWMap[string, float64]()
 var completionRatioMap = types.NewRWMap[string, float64]()
 
 var defaultCompletionRatio = map[string]float64{
-	"gpt-4-gizmo-*":  2,
-	"gpt-4o-gizmo-*": 3,
-	"gpt-4-all":      2,
-	"gpt-image-1":    8,
+	"gpt-4-gizmo-*":                2,
+	"gpt-4o-gizmo-*":               3,
+	"gpt-4-all":                    2,
+	"gpt-image-1":                  8,
+	"glm-5.3":                      3.5, // ￥28 / ￥8 list
+	"glm-5.3-flash":                3.5, // ￥2.8 / ￥0.8 list
+	"deepseek-v4-flash":            3,   // peak ￥9 / ￥3
+	"deepseek-v4-flash-vision-exp": 3,
+	"deepseek-v4-pro":              3, // peak ￥27 / ￥9
 }
 
 // InitRatioSettings initializes all model related settings maps

@@ -39,6 +39,11 @@ var defaultCacheRatio = map[string]float64{
 	"deepseek-chat":                       0.25,
 	"deepseek-reasoner":                   0.25,
 	"deepseek-coder":                      0.25,
+	"deepseek-v4-flash":                   0.10 / 3.0, // peak cache hit / miss
+	"deepseek-v4-flash-vision-exp":        0.10 / 3.0,
+	"deepseek-v4-pro":                     0.30 / 9.0,
+	"glm-5.3":                             2.0 / 8.0,  // list cache hit / miss
+	"glm-5.3-flash":                       0.23 / 0.8, // list, not promo 0.115/0.4
 	"claude-3-sonnet-20240229":            0.1,
 	"claude-3-opus-20240229":              0.1,
 	"claude-3-haiku-20240307":             0.1,
