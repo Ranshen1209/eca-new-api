@@ -90,6 +90,9 @@ describe('ECA overlay tokens', () => {
     expect(tokensCss).toMatch(
       /header a:has\(img\[src\*='eca-mark\.svg'\]\)[\s\S]*overflow:\s*visible/
     )
+    expect(tokensCss).toMatch(
+      /\[data-eca-about='page'\] img\[src\*='eca-mark\.svg'\][\s\S]*width:\s*3\.5rem/
+    )
   })
 
   test('keeps the four API demos on one column width so auto-switching does not jump the hero', () => {

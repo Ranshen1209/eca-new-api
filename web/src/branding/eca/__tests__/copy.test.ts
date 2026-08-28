@@ -26,11 +26,14 @@ import { afterEach, describe, expect, test } from 'vitest'
 import {
   APP_SUPPORT_I18N_KEY,
   applyEcaLandingCopy,
+  ECA_ABOUT_COPY,
   ECA_CC_SWITCH_HREF,
   ECA_CHERRY_STUDIO_HREF,
   ECA_DEMO_API_KEY,
   ECA_DOCS_HREF,
+  ECA_NEW_API_HREF,
   ECA_REPO_HREF,
+  resolveEcaAboutCopy,
   resolveEcaDocsHref,
 } from '../copy'
 
@@ -90,6 +93,7 @@ describe('ECA landing copy', () => {
     )
     expect(i18n.t('with')).toBe('与')
     expect(i18n.t('Powerful API Management Platform')).toBe('')
+    expect(i18n.t('View Pricing')).toBe('查看模型')
   })
 
   test('links ECA API in the apps line to the company fork', () => {
@@ -97,6 +101,25 @@ describe('ECA landing copy', () => {
     expect(heroSource).toContain('Trans')
     expect(heroSource).toContain('ECA_REPO_HREF')
     expect(heroSource).toContain("repo:")
+  })
+
+  test('fills the About page with company-only service copy when admin content is empty', () => {
+    expect(resolveEcaAboutCopy('zhCN')).toEqual(ECA_ABOUT_COPY.zhCN)
+    expect(resolveEcaAboutCopy('zh-CN')).toEqual(ECA_ABOUT_COPY.zhCN)
+    expect(resolveEcaAboutCopy('en')).toEqual(ECA_ABOUT_COPY.en)
+    expect(resolveEcaAboutCopy('zhTW')).toEqual(ECA_ABOUT_COPY.zhTW)
+    expect(resolveEcaAboutCopy('fr')).toEqual(ECA_ABOUT_COPY.fr)
+    expect(ECA_ABOUT_COPY.zhCN.audience).toContain('ECA Healthcare')
+    expect(ECA_ABOUT_COPY.zhCN.support).toContain('公司信息化专员')
+    expect(ECA_ABOUT_COPY.zhCN.creditAfter).toContain('二次开发')
+    expect(ECA_NEW_API_HREF).toBe('https://github.com/QuantumNous/new-api')
+
+    const aboutSource = readFileSync(
+      path.resolve(brandingDir, '../../../features/about/index.tsx'),
+      'utf8'
+    )
+    expect(aboutSource).toContain('EcaAboutPage')
+    expect(aboutSource).toContain('language={i18n.language}')
   })
 
   test('points Cherry Studio and CC Switch buttons at company OpenList folders', () => {

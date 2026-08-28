@@ -305,3 +305,15 @@ a:has(img[src*='eca-mark.svg']) h1 {
 [data-brand='eca'] [data-eca-api-demo] .break-words {
   overflow-wrap: anywhere;
 }
+
+[data-eca-about='page'] img[src*='eca-mark.svg'] {
+  width: 3.5rem !important;
+  height: 3.5rem !important;
+}
+
+@media (width >= 40rem) {
+  [data-eca-about='page'] img[src*='eca-mark.svg'] {
+    width: 4rem !important;
+    height: 4rem !important;
+  }
+}
