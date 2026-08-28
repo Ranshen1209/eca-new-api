@@ -20,8 +20,11 @@ import { Link } from '@tanstack/react-router'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { ECA_REPO_HREF } from '@/branding/eca/copy'
+import { resolveEcaCompactMarkHref } from '@/branding/eca/favicon'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
+import { DEFAULT_SYSTEM_NAME } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 
 interface FooterLink {
@@ -41,12 +44,6 @@ interface FooterProps {
   copyright?: string
   className?: string
 }
-
-const NEW_API_FOOTER_ATTRIBUTION_KEY = [
-  'footer',
-  'new' + 'api',
-  'projectAttributionSuffix',
-].join('.')
 
 function FooterLinkItem(props: { link: FooterLink }) {
   const { t } = useTranslation()
@@ -123,11 +120,25 @@ function LegalLinks(props: { leadingSeparator?: boolean }) {
 
 // inline=true returns just the inner span for composition in a parent flex
 // row. inline=false wraps in a centered/right-aligned div (default).
-function ProjectAttribution(props: { currentYear: number; inline?: boolean }) {
+function ProjectAttribution(props: {
+  currentYear: number
+  productName: string
+  inline?: boolean
+}) {
   const { t } = useTranslation()
   const content = (
     <span className='text-muted-foreground/45'>
       &copy; {props.currentYear}{' '}
+      <a
+        href={ECA_REPO_HREF}
+        target='_blank'
+        rel='noopener noreferrer'
+        className='text-foreground/70 hover:text-foreground font-medium transition-colors'
+      >
+        {props.productName}
+      </a>
+      {' '}
+      {t('with')}{' '}
       <a
         href='https://github.com/QuantumNous/new-api'
         target='_blank'
@@ -136,7 +147,8 @@ function ProjectAttribution(props: { currentYear: number; inline?: boolean }) {
       >
         {t('New API')}
       </a>
-      . {t(NEW_API_FOOTER_ATTRIBUTION_KEY)}
+      {' '}
+      {t('footer.defaultCopyright')}
     </span>
   )
   if (props.inline) {
@@ -159,7 +171,7 @@ export function Footer(props: FooterProps) {
   } = useSystemConfig()
 
   const displayLogo = systemLogo || props.logo || '/logo.png'
-  const displayName = systemName || props.name || 'New API'
+  const displayName = systemName || props.name || DEFAULT_SYSTEM_NAME
   const isDemoSiteMode = Boolean(demoSiteEnabled)
   const currentYear = new Date().getFullYear()
 
@@ -238,7 +250,11 @@ export function Footer(props: FooterProps) {
             />
             <div className='border-border/60 text-muted-foreground/45 flex w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t pt-4 text-xs sm:w-auto sm:justify-end sm:border-t-0 sm:border-l sm:pt-0 sm:pl-5'>
               <LegalLinks />
-              <ProjectAttribution currentYear={currentYear} inline />
+              <ProjectAttribution
+                currentYear={currentYear}
+                productName={displayName}
+                inline
+              />
             </div>
           </div>
         </div>
@@ -256,7 +272,7 @@ export function Footer(props: FooterProps) {
           <div className='shrink-0'>
             <Link to='/' className='group flex items-center gap-2.5'>
               <img
-                src={displayLogo}
+                src={resolveEcaCompactMarkHref(displayLogo)}
                 alt={displayName}
                 className='size-7 rounded-lg object-contain'
               />
@@ -294,13 +310,12 @@ export function Footer(props: FooterProps) {
             attribution on the right; wraps on narrow screens. */}
         <div className='border-border/30 mt-12 flex flex-col items-center justify-between gap-x-3 gap-y-2 border-t pt-6 sm:flex-row'>
           <div className='text-muted-foreground/40 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:justify-start'>
-            <span>
-              &copy; {currentYear} {displayName}.{' '}
-              {props.copyright ?? t('footer.defaultCopyright')}
-            </span>
-            <LegalLinks leadingSeparator />
+            <LegalLinks />
           </div>
-          <ProjectAttribution currentYear={currentYear} />
+          <ProjectAttribution
+            currentYear={currentYear}
+            productName={displayName}
+          />
         </div>
       </div>
     </footer>

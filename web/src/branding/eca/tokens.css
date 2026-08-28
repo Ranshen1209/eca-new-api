@@ -1,0 +1,307 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+
+/*
+ * ECA company overlay. Keep this file additive so upstream merges only
+ * collide on the one-line import in styles/index.css.
+ *
+ * Brand: green #01a568 / #007a4d, gold #ffd400 as a spark only.
+ */
+
+:root {
+  --eca-green: #01a568;
+  --eca-green-dark: #007a4d;
+  --eca-gold: #ffd400;
+  --primary: #01a568;
+  --primary-foreground: #ffffff;
+  --ring: #01a568;
+  --sidebar-primary: #01a568;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-ring: #01a568;
+  --sidebar-accent-foreground: #007a4d;
+}
+
+.dark {
+  --primary: #1db87a;
+  --primary-foreground: #042016;
+  --ring: #1db87a;
+  --sidebar-primary: #1db87a;
+  --sidebar-primary-foreground: #042016;
+  --sidebar-ring: #1db87a;
+  --sidebar-accent-foreground: #8ee0c0;
+}
+
+[data-brand='eca'] {
+  --color-blue-400: #3dba86;
+  --color-blue-500: #01a568;
+  --color-blue-600: #007a4d;
+  --color-violet-300: #8ee0c0;
+  --color-violet-400: #007a4d;
+  --color-violet-500: #007a4d;
+  --color-violet-600: #004d31;
+  --color-purple-500: #ffd400;
+}
+
+[data-brand='eca'] section > div[aria-hidden][style*='radial-gradient'] {
+  background:
+    radial-gradient(
+      ellipse 60% 50% at 18% 22%,
+      rgb(1 165 104 / 42%) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 48% 40% at 82% 18%,
+      rgb(255 212 0 / 22%) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40% 35% at 42% 82%,
+      rgb(0 122 77 / 28%) 0%,
+      transparent 70%
+    ) !important;
+}
+
+.dark [data-brand='eca'] section > div[aria-hidden][style*='radial-gradient'] {
+  background:
+    radial-gradient(
+      ellipse 60% 50% at 18% 22%,
+      rgb(29 184 122 / 35%) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 48% 40% at 82% 18%,
+      rgb(255 212 0 / 16%) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40% 35% at 42% 82%,
+      rgb(1 165 104 / 22%) 0%,
+      transparent 70%
+    ) !important;
+}
+
+[data-brand='eca'] footer a.group + p {
+  display: none;
+}
+
+[data-brand='eca'] h1 span.bg-clip-text,
+[data-brand='eca'] h2 span.bg-clip-text {
+  background-image: linear-gradient(
+    to right,
+    #01a568,
+    #007a4d,
+    #ffd400
+  );
+}
+
+[data-brand='eca'] section.relative.z-10 h1,
+[data-brand='eca'] section.relative.z-10 :has(+ h1) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.eca-optical-flow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.eca-optical-flow::before {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  background:
+    radial-gradient(
+      ellipse 42% 36% at 16% 18%,
+      rgb(1 165 104 / 16%) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 34% 30% at 86% 12%,
+      rgb(255 212 0 / 10%) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 48% 38% at 72% 88%,
+      rgb(1 165 104 / 14%) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 36% 32% at 18% 92%,
+      rgb(255 212 0 / 8%) 0%,
+      transparent 70%
+    );
+  animation: eca-orb-drift 42s ease-in-out infinite;
+}
+
+@keyframes eca-orb-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(2.5%, 1.5%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eca-optical-flow::before {
+    animation: none;
+  }
+}
+
+[data-brand='eca'] footer > div {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+[data-brand='eca'] footer .shrink-0 {
+  display: none;
+}
+
+[data-brand='eca'] footer .mt-12 {
+  margin-top: 0;
+  padding-top: 0;
+  border-top-width: 0;
+}
+
+[data-brand='eca'] section.relative.z-10 {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+  padding-bottom: 3rem;
+}
+
+[data-brand='eca'] footer {
+  margin-top: auto;
+}
+
+img[src*='eca-logo.png'] {
+  width: auto !important;
+  max-width: min(18rem, 80vw);
+  height: 3rem;
+  border-radius: 0 !important;
+  object-fit: contain !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+img[src*='eca-logo.png'].h-12 {
+  height: 5rem;
+}
+
+div:has(> img[src*='eca-logo.png']) {
+  width: auto !important;
+  height: auto !important;
+  aspect-ratio: auto !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
+}
+
+/*
+ * Compact chrome sits next to type. Size the no-tagline mark to the
+ * adjacent cap-height and collapse square wrappers so flex centering
+ * lines the ink up with the label, not a padded 1:1 box.
+ */
+img[src*='eca-mark.svg'] {
+  display: block;
+  width: 2.75em !important;
+  height: 1em !important;
+  border-radius: 0 !important;
+  object-fit: contain !important;
+  transition: opacity 0.2s ease !important;
+}
+
+img[src*='eca-mark.svg'].h-8 {
+  width: 3.4375rem !important;
+  height: 1.25rem !important;
+}
+
+div:has(> img[src*='eca-mark.svg'].h-8) {
+  width: 3.4375rem !important;
+  height: 1.25rem !important;
+}
+
+a:has(img[src*='eca-mark.svg']) {
+  display: flex !important;
+  align-items: center !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+div:has(> img[src*='eca-mark.svg']) {
+  display: flex !important;
+  align-items: center !important;
+  width: 2.75em !important;
+  height: 1em !important;
+  aspect-ratio: auto !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
+  transition-property: transform !important;
+}
+
+header:has(img[src*='eca-mark.svg']),
+header nav:has(img[src*='eca-mark.svg']),
+header a:has(img[src*='eca-mark.svg']) {
+  overflow: visible !important;
+}
+
+header a:has(img[src*='eca-mark.svg']) {
+  font-size: 0.875rem;
+}
+
+a:has(img[src*='eca-mark.svg']) span,
+a:has(img[src*='eca-mark.svg']) h1 {
+  line-height: 1 !important;
+}
+
+/*
+ * Making the hero a column flex (to fill the viewport) plus upstream mx-auto
+ * shrink-wraps the 12-col grid to each demo's content. Pin the grid to the
+ * available width so auto-switching Chat / Responses / Claude / Gemini
+ * cannot resize the left column.
+ */
+[data-brand='eca'] section.relative.z-10 > div.grid {
+  width: 100%;
+  min-width: 0;
+}
+
+[data-brand='eca'] section.relative.z-10 > div.grid > * {
+  min-width: 0;
+}
+
+@media (width >= 64rem) {
+  [data-brand='eca'] section.relative.z-10 > div.grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+}
+
+[data-brand='eca'] [data-eca-api-demo] {
+  width: 100%;
+  min-width: 0;
+}
+
+[data-brand='eca'] [data-eca-api-demo] .break-words {
+  overflow-wrap: anywhere;
+}

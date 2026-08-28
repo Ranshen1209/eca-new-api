@@ -183,6 +183,7 @@
 - 提交信息清晰、符合项目约定，描述变更内容与原因，中英文统一即可。
 - 变更需经过代码审查，符合本文档规范，并关注质量、性能与安全。
 - 重大功能或规范变更时更新相关文档与 `AGENTS.md`。
+- 公司品牌（ECA API Logo、主色、首页背景、落地页文案覆盖、favicon）只放在 `src/branding/eca/` 与 `public/eca-*`。默认落地页只保留 Hero + Footer。合并上游与禁止改动的文件见仓库根目录 `AGENTS.md` 的 **ECA company overlay**。
 
 ---
 

@@ -23,6 +23,8 @@ tiktoken_cache
 plans
 .claude
 .cursor
+!.cursor/rules/
+!.cursor/rules/**
 
 electron/node_modules
 electron/dist

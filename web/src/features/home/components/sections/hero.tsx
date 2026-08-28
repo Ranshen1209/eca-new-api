@@ -19,7 +19,9 @@ For commercial licensing, please contact support@quantumnous.com
 import { CherryStudio } from '@lobehub/icons'
 import { Link } from '@tanstack/react-router'
 import { ArrowRight, BookOpen } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
+
+import { APP_SUPPORT_I18N_KEY, ECA_REPO_HREF } from '@/branding/eca/copy'
 
 import { Button } from '@/components/ui/button'
 import { useStatus } from '@/hooks/use-status'
@@ -179,9 +181,19 @@ export function Hero(props: HeroProps) {
                 {t('Supported Applications')}
               </span>
               <p className='text-muted-foreground/60 text-xs leading-relaxed'>
-                {t(
-                  'Supports one-click configuration and perfectly adapts to NewAPI multi-protocol configuration.'
-                )}
+                <Trans
+                  i18nKey={APP_SUPPORT_I18N_KEY}
+                  components={{
+                    repo: (
+                      <a
+                        href={ECA_REPO_HREF}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='text-foreground/80 hover:text-foreground font-medium underline decoration-foreground/25 underline-offset-2'
+                      />
+                    ),
+                  }}
+                />
               </p>
             </div>
             <div className='flex flex-wrap items-center gap-3'>

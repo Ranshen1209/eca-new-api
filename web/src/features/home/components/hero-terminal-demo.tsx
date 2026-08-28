@@ -76,7 +76,7 @@ const API_DEMOS: ApiDemoConfig[] = [
     label: 'Chat',
     method: 'POST',
     endpoint: '/v1/chat/completions',
-    headers: ['"Authorization: Bearer sk-••••"'],
+    headers: ['"Authorization: Bearer $ECA-API-KEY"'],
     request: [
       '"model": "your-model",',
       '"messages": [',
@@ -99,7 +99,7 @@ const API_DEMOS: ApiDemoConfig[] = [
     label: 'Responses',
     method: 'POST',
     endpoint: '/v1/responses',
-    headers: ['"Authorization: Bearer sk-••••"'],
+    headers: ['"Authorization: Bearer $ECA-API-KEY"'],
     request: ['"model": "your-model",', '"input": "..."'],
     response: [
       '{',
@@ -117,7 +117,7 @@ const API_DEMOS: ApiDemoConfig[] = [
     label: 'Claude',
     method: 'POST',
     endpoint: '/v1/messages',
-    headers: ['"x-api-key: sk-••••"', '"anthropic-version: 2023-06-01"'],
+    headers: ['"x-api-key: $ECA-API-KEY"', '"anthropic-version: 2023-06-01"'],
     request: [
       '"model": "your-model",',
       '"max_tokens": 1024,',
@@ -141,7 +141,7 @@ const API_DEMOS: ApiDemoConfig[] = [
     label: 'Gemini',
     method: 'POST',
     endpoint: '/v1beta/models/{model}:generateContent',
-    headers: ['"x-goog-api-key: sk-••••"'],
+    headers: ['"x-goog-api-key: $ECA-API-KEY"'],
     request: [
       '"contents": [',
       '  { "role": "user",',
@@ -207,7 +207,10 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
   const accent = ACCENT_CLASSES[demo.accent]
 
   return (
-    <div className={cn('mx-auto w-full max-w-2xl', props.className)}>
+    <div
+      data-eca-api-demo
+      className={cn('mx-auto w-full min-w-0 max-w-2xl', props.className)}
+    >
       <div
         className={cn(
           'overflow-hidden rounded-2xl border backdrop-blur-sm',
@@ -489,7 +492,7 @@ function tokenize(input: string): ReactNode {
 
 function CodeLine(props: { children: ReactNode; indent?: number }) {
   return (
-    <div className='break-words whitespace-pre-wrap'>
+    <div className='min-w-0 break-words [overflow-wrap:anywhere] whitespace-pre-wrap'>
       {props.indent ? (
         <span
           aria-hidden

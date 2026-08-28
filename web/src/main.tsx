@@ -28,6 +28,7 @@ import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { toast } from 'sonner'
 
+import { resolveEcaSystemName } from '@/branding/eca/system-name'
 import { getStatus } from '@/lib/api'
 import { installBuildMetadata } from '@/lib/build-metadata'
 import { applyFaviconToDom } from '@/lib/dom-utils'
@@ -129,7 +130,7 @@ if (!rootElement) {
       const saved = localStorage.getItem('status')
       if (saved) {
         const s = JSON.parse(saved)
-        if (s?.system_name) apply(s.system_name)
+        if (s?.system_name) apply(resolveEcaSystemName(s.system_name))
         if (s?.logo) applyFaviconToDom(s.logo)
       }
     } catch {
@@ -139,7 +140,7 @@ if (!rootElement) {
     getStatus()
       .then((s) => {
         if (s?.system_name) {
-          apply(s.system_name as string)
+          apply(resolveEcaSystemName(s.system_name as string))
           try {
             localStorage.setItem('status', JSON.stringify(s))
           } catch {

@@ -138,6 +138,48 @@ Do NOT directly import or call `encoding/json` in business code. `json.RawMessag
 - In React components, use `useTranslation()` and call `t('English key')` for user-facing text.
 - Follow `web/AGENTS.md` for detailed frontend conventions, including TypeScript, component structure, styling, accessibility, testing, and build checks.
 
+### ECA company overlay
+
+This checkout is a company fork of upstream new-api. Frontend branding is an **additive overlay**; do not restyle the product by forking high-churn upstream files. Backend stays unmodified for branding.
+
+**Keep company code here:**
+
+- `web/src/branding/eca/` — tokens, homepage frame, quiet hero wash, landing copy overlay, favicon resolver, compact mark, system-name resolver
+- `web/src/features/home/index.tsx` — wrap the default landing in `EcaLandingFrame`; keep Hero + Footer only (no Stats / Features / HowItWorks / CTA)
+- `web/public/eca-logo.png` — header/footer wordmark (with tagline)
+- `web/public/eca-favicon.svg` — tab icon; official no-tagline SVG on a square canvas
+- `web/public/eca-mark.svg` — compact in-page mark (no tagline, native 2:1)
+
+**Allowed upstream seams (keep the diff to one or two lines each):**
+
+- `web/src/styles/index.css` — import `../branding/eca/tokens.css` after `theme-presets.css`
+- `web/src/features/home/index.tsx` — wrap the default landing in `EcaLandingFrame` (Hero + Footer only)
+- `web/src/lib/constants.ts` — `DEFAULT_SYSTEM_NAME = 'ECA API Gateway'`, `DEFAULT_LOGO = '/eca-logo.png'`
+- `web/index.html` — first-paint title `ECA API Gateway` and favicon `/eca-favicon.svg`
+- `web/src/lib/dom-utils.ts` — `applyFaviconToDom` must run URLs through `resolveEcaFaviconHref` so the header wordmark PNG does not become the tab icon
+- `web/src/hooks/use-system-config.ts` — map `/api/status` `system_name` through `resolveEcaSystemName` so the upstream default `New API` displays as `ECA API Gateway`
+- `web/src/components/layout/components/system-brand.tsx` — header name uses `resolveEcaSystemName`
+- `web/src/main.tsx` — document title uses `resolveEcaSystemName`
+- `web/src/components/layout/components/header-logo.tsx` — compact header mark uses `resolveEcaCompactMarkHref`
+- `web/src/features/auth/auth-layout.tsx` — login mark uses `resolveEcaCompactMarkHref`
+- `web/src/features/home/components/hero-terminal-demo.tsx` — demo credential is `$ECA-API-KEY`, not a fake `sk-` string
+- `web/src/features/home/components/sections/hero.tsx` — apps-line `Trans` link to the company GitHub repo
+- `web/src/components/layout/components/header-logo.tsx` — compact header mark uses `resolveEcaCompactMarkHref`
+- `web/src/features/auth/auth-layout.tsx` — login mark uses `resolveEcaCompactMarkHref`
+
+**Do not:**
+
+- Edit `theme.css` or `THEME_PRESETS` for brand work
+- Remove AGPL license headers or QuantumNous copyright notices from source files
+- Put company styles into `relay/`, Go constants, or admin Site Settings code
+- Reintroduce `web/src/branding/eca/build_favicon.py` or a hand-drawn plus favicon
+
+**Landing copy on this fork:** Hero and footer may use the company name ECA API. Keep a visible New API credit in the footer. Linking ECA API to `https://github.com/Ranshen1209/eca-new-api` is allowed. This does not replace AGPL license headers.
+
+**Merge upstream:** `git remote add upstream https://github.com/QuantumNous/new-api.git` if missing, then `git fetch upstream && git merge upstream/main`. Expected conflicts: `index.css` import and `home/index.tsx` wrapper.
+
+**Deploy:** the UI shows `ECA API Gateway` even while the backend default name is still New API. Footer still credits New API. Saving System Settings → Site name `ECA API Gateway` and logo `/eca-logo.png` persists those values in the database.
+
 ### Project Governance
 
 **Protected project information:** The following project-related information is strictly protected and MUST NOT be modified, deleted, replaced, or removed under any circumstances:

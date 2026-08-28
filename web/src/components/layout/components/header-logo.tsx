@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { resolveEcaCompactMarkHref } from '@/branding/eca/favicon'
 import { cn } from '@/lib/utils'
 
 interface HeaderLogoProps {
@@ -39,7 +40,7 @@ export function HeaderLogo({
 }: HeaderLogoProps) {
   return (
     <img
-      src={src}
+      src={resolveEcaCompactMarkHref(src)}
       alt={alt}
       className={cn(
         'h-6 w-6 rounded-full transition-opacity duration-200',
