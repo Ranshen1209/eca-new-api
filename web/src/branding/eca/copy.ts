@@ -20,6 +20,35 @@ import type { i18n as I18nInstance } from 'i18next'
 
 export const ECA_DEMO_API_KEY = '$ECA-API-KEY'
 export const ECA_REPO_HREF = 'https://github.com/Ranshen1209/eca-new-api'
+export const ECA_DOCS_HREF = 'https://docs.eca-healthcare.org/'
+
+const UPSTREAM_DOCS_HOST = 'docs.newapi.pro'
+
+export function resolveEcaDocsHref(href?: string | null): string {
+  const trimmed = href?.trim()
+  if (!trimmed || trimmed === '/docs') {
+    return ECA_DOCS_HREF
+  }
+
+  try {
+    const url = new URL(trimmed, 'http://local.invalid')
+    if (
+      url.hostname === UPSTREAM_DOCS_HOST ||
+      url.hostname === `www.${UPSTREAM_DOCS_HOST}`
+    ) {
+      return ECA_DOCS_HREF
+    }
+    if (url.hostname === 'local.invalid' && url.pathname === '/docs') {
+      return ECA_DOCS_HREF
+    }
+  } catch {
+    if (trimmed.includes(UPSTREAM_DOCS_HOST)) {
+      return ECA_DOCS_HREF
+    }
+  }
+
+  return trimmed
+}
 
 export const APP_SUPPORT_I18N_KEY =
   'Supports one-click configuration and adapts to <repo>ECA API</repo> multi-protocol configuration.'

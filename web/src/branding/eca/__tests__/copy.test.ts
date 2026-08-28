@@ -27,7 +27,9 @@ import {
   APP_SUPPORT_I18N_KEY,
   applyEcaLandingCopy,
   ECA_DEMO_API_KEY,
+  ECA_DOCS_HREF,
   ECA_REPO_HREF,
+  resolveEcaDocsHref,
 } from '../copy'
 
 const brandingDir = path.dirname(fileURLToPath(import.meta.url))
@@ -93,6 +95,27 @@ describe('ECA landing copy', () => {
     expect(heroSource).toContain('Trans')
     expect(heroSource).toContain('ECA_REPO_HREF')
     expect(heroSource).toContain("repo:")
+  })
+
+  test('points Docs links at the company docs site instead of upstream New API docs', () => {
+    expect(ECA_DOCS_HREF).toBe('https://docs.eca-healthcare.org/')
+    expect(resolveEcaDocsHref(undefined)).toBe(ECA_DOCS_HREF)
+    expect(resolveEcaDocsHref('')).toBe(ECA_DOCS_HREF)
+    expect(resolveEcaDocsHref('/docs')).toBe(ECA_DOCS_HREF)
+    expect(resolveEcaDocsHref('https://docs.newapi.pro')).toBe(ECA_DOCS_HREF)
+    expect(resolveEcaDocsHref('https://docs.newapi.pro/api/')).toBe(ECA_DOCS_HREF)
+    expect(resolveEcaDocsHref('https://example.com/custom-docs')).toBe(
+      'https://example.com/custom-docs'
+    )
+    expect(heroSource).toContain('resolveEcaDocsHref')
+    expect(footerSource).toContain('ECA_DOCS_HREF')
+    expect(footerSource).not.toContain('docs.newapi.pro')
+
+    const navSource = readFileSync(
+      path.resolve(brandingDir, '../../../hooks/use-top-nav-links.ts'),
+      'utf8'
+    )
+    expect(navSource).toContain('resolveEcaDocsHref(docsLink)')
   })
 
   test('links ECA API in the footer credit to the company fork', () => {

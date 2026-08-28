@@ -21,7 +21,11 @@ import { Link } from '@tanstack/react-router'
 import { ArrowRight, BookOpen } from 'lucide-react'
 import { Trans, useTranslation } from 'react-i18next'
 
-import { APP_SUPPORT_I18N_KEY, ECA_REPO_HREF } from '@/branding/eca/copy'
+import {
+  APP_SUPPORT_I18N_KEY,
+  ECA_REPO_HREF,
+  resolveEcaDocsHref,
+} from '@/branding/eca/copy'
 
 import { Button } from '@/components/ui/button'
 import { useStatus } from '@/hooks/use-status'
@@ -50,8 +54,7 @@ const MoreIcon = () => (
 export function Hero(props: HeroProps) {
   const { t } = useTranslation()
   const { status } = useStatus()
-  const docsUrl =
-    (status?.docs_link as string | undefined) || 'https://docs.newapi.pro'
+  const docsUrl = resolveEcaDocsHref(status?.docs_link as string | undefined)
 
   const renderDocsButton = () => {
     const isExternal = docsUrl.startsWith('http')
