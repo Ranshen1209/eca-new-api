@@ -163,7 +163,7 @@ This checkout is a company fork of upstream new-api. Frontend branding is an **a
 - `web/src/components/layout/components/header-logo.tsx` — compact header mark uses `resolveEcaCompactMarkHref`
 - `web/src/features/auth/auth-layout.tsx` — login mark uses `resolveEcaCompactMarkHref`
 - `web/src/features/home/components/hero-terminal-demo.tsx` — demo credential is `$ECA-API-KEY`, not a fake `sk-` string
-- `web/src/features/home/components/sections/hero.tsx` — apps-line `Trans` link to the company GitHub repo; Docs button uses `resolveEcaDocsHref`
+- `web/src/features/home/components/sections/hero.tsx` — apps-line `Trans` link to the company GitHub repo; Docs button uses `resolveEcaDocsHref`; Cherry Studio / CC Switch buttons use `ECA_CHERRY_STUDIO_HREF` / `ECA_CC_SWITCH_HREF`
 - `web/src/hooks/use-top-nav-links.ts` — header Docs uses `resolveEcaDocsHref`
 - `web/src/components/layout/components/footer.tsx` — compact mark, New API credit, and docs links use `ECA_DOCS_HREF`
 

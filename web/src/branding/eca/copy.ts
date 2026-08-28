@@ -21,6 +21,10 @@ import type { i18n as I18nInstance } from 'i18next'
 export const ECA_DEMO_API_KEY = '$ECA-API-KEY'
 export const ECA_REPO_HREF = 'https://github.com/Ranshen1209/eca-new-api'
 export const ECA_DOCS_HREF = 'https://docs.eca-healthcare.org/'
+export const ECA_CHERRY_STUDIO_HREF =
+  'https://openlist.eca-healthcare.org/Cherry%20Studio'
+export const ECA_CC_SWITCH_HREF =
+  'https://openlist.eca-healthcare.org/CC%20Switch'
 
 const UPSTREAM_DOCS_HOST = 'docs.newapi.pro'
 

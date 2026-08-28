@@ -26,6 +26,8 @@ import { afterEach, describe, expect, test } from 'vitest'
 import {
   APP_SUPPORT_I18N_KEY,
   applyEcaLandingCopy,
+  ECA_CC_SWITCH_HREF,
+  ECA_CHERRY_STUDIO_HREF,
   ECA_DEMO_API_KEY,
   ECA_DOCS_HREF,
   ECA_REPO_HREF,
@@ -95,6 +97,19 @@ describe('ECA landing copy', () => {
     expect(heroSource).toContain('Trans')
     expect(heroSource).toContain('ECA_REPO_HREF')
     expect(heroSource).toContain("repo:")
+  })
+
+  test('points Cherry Studio and CC Switch buttons at company OpenList folders', () => {
+    expect(ECA_CHERRY_STUDIO_HREF).toBe(
+      'https://openlist.eca-healthcare.org/Cherry%20Studio'
+    )
+    expect(ECA_CC_SWITCH_HREF).toBe(
+      'https://openlist.eca-healthcare.org/CC%20Switch'
+    )
+    expect(heroSource).toContain('ECA_CHERRY_STUDIO_HREF')
+    expect(heroSource).toContain('ECA_CC_SWITCH_HREF')
+    expect(heroSource).not.toContain("href='https://cherry-ai.com'")
+    expect(heroSource).not.toContain("href='https://ccswitch.io'")
   })
 
   test('points Docs links at the company docs site instead of upstream New API docs', () => {
