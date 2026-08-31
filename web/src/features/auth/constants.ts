@@ -18,9 +18,12 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { z } from 'zod'
 
-// ============================================================================
-// Form Schemas
-// ============================================================================
+export const PASSWORD_MIN_LENGTH = 8
+export const PASSWORD_MAX_LENGTH = 64
+export const OTP_LENGTH = 6
+export const BACKUP_CODE_LENGTH = 9 // XXXX-XXXX format
+export const BACKUP_CODE_REGEX = /^[A-Z0-9]{4}-[A-Z0-9]{4}$/i
+export const OTP_REGEX = /^\d{6}$/
 
 export const loginFormSchema = z.object({
   username: z.string().min(1, 'Please enter your username or email'),
@@ -34,8 +37,8 @@ export const registerFormSchema = z
     password: z
       .string()
       .min(1, 'Please enter your password')
-      .min(8, 'Password must be between 8 and 20 characters')
-      .max(20, 'Password must be at most 20 characters long'),
+      .min(PASSWORD_MIN_LENGTH, 'Password must be between 8 and 64 characters')
+      .max(PASSWORD_MAX_LENGTH, 'Password must be at most 64 characters long'),
     confirmPassword: z.string().min(1, 'Please confirm your password'),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -52,17 +55,6 @@ export const forgotPasswordFormSchema = z.object({
 export const otpFormSchema = z.object({
   otp: z.string().min(1, 'Please enter a code.'),
 })
-
-// ============================================================================
-// Validation Constants
-// ============================================================================
-
-export const PASSWORD_MIN_LENGTH = 8
-export const PASSWORD_MAX_LENGTH = 20
-export const OTP_LENGTH = 6
-export const BACKUP_CODE_LENGTH = 9 // XXXX-XXXX format
-export const BACKUP_CODE_REGEX = /^[A-Z0-9]{4}-[A-Z0-9]{4}$/i
-export const OTP_REGEX = /^\d{6}$/
 
 // ============================================================================
 // Countdown Constants

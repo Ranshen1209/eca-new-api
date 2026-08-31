@@ -23,6 +23,10 @@ import { toast } from 'sonner'
 
 import { Dialog } from '@/components/dialog'
 import { PasswordInput } from '@/components/password-input'
+import {
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+} from '@/features/auth/constants'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 
@@ -69,8 +73,13 @@ export function ChangePasswordDialog({
       return
     }
 
-    if (formData.newPassword.length < 8) {
+    if (formData.newPassword.length < PASSWORD_MIN_LENGTH) {
       toast.error(t('Password must be at least 8 characters'))
+      return
+    }
+
+    if (formData.newPassword.length > PASSWORD_MAX_LENGTH) {
+      toast.error(t('Password must be at most 64 characters long'))
       return
     }
 

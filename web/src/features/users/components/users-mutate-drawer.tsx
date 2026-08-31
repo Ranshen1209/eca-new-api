@@ -63,6 +63,10 @@ import {
 } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import {
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+} from '@/features/auth/constants'
+import {
   ADMIN_PERMISSION_ACTIONS,
   ADMIN_PERMISSION_RESOURCES,
   EMPTY_PERMISSION_CATALOG,
@@ -159,10 +163,13 @@ export function UsersMutateDrawer({
   const onSubmit = async (data: UserFormValues) => {
     if (!isUpdate) {
       const passwordLength = data.password?.length || 0
-      if (passwordLength < 8 || passwordLength > 20) {
+      if (
+        passwordLength < PASSWORD_MIN_LENGTH ||
+        passwordLength > PASSWORD_MAX_LENGTH
+      ) {
         form.setError('password', {
           type: 'manual',
-          message: t('Password must be between 8 and 20 characters'),
+          message: t('Password must be between 8 and 64 characters'),
         })
         return
       }
@@ -338,7 +345,7 @@ export function UsersMutateDrawer({
                           placeholder={
                             isUpdate
                               ? t('Leave empty to keep unchanged')
-                              : t('Enter password (8-20 characters)')
+                              : t('Enter password (8-64 characters)')
                           }
                         />
                       </FormControl>
