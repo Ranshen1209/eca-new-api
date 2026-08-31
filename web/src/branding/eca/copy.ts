@@ -25,6 +25,11 @@ export const ECA_CHERRY_STUDIO_HREF =
   'https://openlist.eca-healthcare.org/Cherry%20Studio'
 export const ECA_CC_SWITCH_HREF =
   'https://openlist.eca-healthcare.org/CC%20Switch'
+export const ECA_CC_SWITCH_DEFAULT_NAMES = {
+  claude: 'ECA API Claude',
+  codex: 'ECA API Codex',
+  gemini: 'ECA API Gemini',
+} as const
 
 export const ECA_NEW_API_HREF = 'https://github.com/QuantumNous/new-api'
 

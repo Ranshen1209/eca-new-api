@@ -27,6 +27,7 @@ import {
   APP_SUPPORT_I18N_KEY,
   applyEcaLandingCopy,
   ECA_ABOUT_COPY,
+  ECA_CC_SWITCH_DEFAULT_NAMES,
   ECA_CC_SWITCH_HREF,
   ECA_CHERRY_STUDIO_HREF,
   ECA_DEMO_API_KEY,
@@ -120,6 +121,26 @@ describe('ECA landing copy', () => {
     )
     expect(aboutSource).toContain('EcaAboutPage')
     expect(aboutSource).toContain('language={i18n.language}')
+  })
+
+  test('names CC Switch imports ECA API Claude, Codex, and Gemini instead of My Claude', () => {
+    expect(ECA_CC_SWITCH_DEFAULT_NAMES).toEqual({
+      claude: 'ECA API Claude',
+      codex: 'ECA API Codex',
+      gemini: 'ECA API Gemini',
+    })
+
+    const dialogSource = readFileSync(
+      path.resolve(
+        brandingDir,
+        '../../../features/keys/components/dialogs/cc-switch-dialog.tsx'
+      ),
+      'utf8'
+    )
+    expect(dialogSource).toContain('ECA_CC_SWITCH_DEFAULT_NAMES')
+    expect(dialogSource).not.toContain('My Claude')
+    expect(dialogSource).not.toContain('My Codex')
+    expect(dialogSource).not.toContain('My Gemini')
   })
 
   test('points Cherry Studio and CC Switch buttons at company OpenList folders', () => {

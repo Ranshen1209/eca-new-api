@@ -21,6 +21,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { ECA_CC_SWITCH_DEFAULT_NAMES } from '@/branding/eca/copy'
 import { Dialog } from '@/components/dialog'
 import { Button } from '@/components/ui/button'
 import { ComboboxInput } from '@/components/ui/combobox-input'
@@ -31,7 +32,7 @@ import { getUserModels } from '@/lib/api'
 const APP_CONFIGS = {
   claude: {
     label: 'Claude',
-    defaultName: 'My Claude',
+    defaultName: ECA_CC_SWITCH_DEFAULT_NAMES.claude,
     modelFields: [
       { key: 'model', labelKey: 'Primary Model', required: true },
       { key: 'haikuModel', labelKey: 'Haiku Model', required: false },
@@ -41,12 +42,12 @@ const APP_CONFIGS = {
   },
   codex: {
     label: 'Codex',
-    defaultName: 'My Codex',
+    defaultName: ECA_CC_SWITCH_DEFAULT_NAMES.codex,
     modelFields: [{ key: 'model', labelKey: 'Primary Model', required: true }],
   },
   gemini: {
     label: 'Gemini',
-    defaultName: 'My Gemini',
+    defaultName: ECA_CC_SWITCH_DEFAULT_NAMES.gemini,
     modelFields: [{ key: 'model', labelKey: 'Primary Model', required: true }],
   },
 } as const
