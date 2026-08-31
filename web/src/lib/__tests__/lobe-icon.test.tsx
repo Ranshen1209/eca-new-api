@@ -24,20 +24,21 @@ vi.mock('@lobehub/icons', () => ({}))
 const { getLobeIcon } = await import('../lobe-icon')
 
 describe('getLobeIcon Xiaomi Mimo', () => {
-  it('renders the bundled Xiaomi webp for the XiaomiMiMo key', () => {
+  it('renders the bundled MiMo SVG for the XiaomiMiMo key', () => {
     const { container } = render(<>{getLobeIcon('XiaomiMiMo', 14)}</>)
-    const img = container.querySelector('img')
-    expect(img).not.toBeNull()
-    expect(img).toHaveAttribute('src', '/xiaomi.webp')
-    expect(img).toHaveAttribute('width', '14')
-    expect(img).toHaveAttribute('height', '14')
+    const svg = container.querySelector('svg')
+    expect(svg).not.toBeNull()
+    expect(svg).toHaveAttribute('viewBox', '0 0 24 24')
+    expect(svg).toHaveAttribute('width', '14')
+    expect(svg).toHaveAttribute('height', '14')
+    expect(svg).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('renders a public image path as an img', () => {
-    const { container } = render(<>{getLobeIcon('/xiaomi.webp', 28)}</>)
+    const { container } = render(<>{getLobeIcon('/xiaomimimo.svg', 28)}</>)
     const img = container.querySelector('img')
     expect(img).not.toBeNull()
-    expect(img).toHaveAttribute('src', '/xiaomi.webp')
+    expect(img).toHaveAttribute('src', '/xiaomimimo.svg')
     expect(img).toHaveAttribute('width', '28')
   })
 })
