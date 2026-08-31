@@ -29,9 +29,20 @@ import * as LobeIcons from '@lobehub/icons'
 import type React from 'react'
 
 import { IconSub2api } from '@/assets/custom/icon-sub2api'
+import { IconXiaomiMimo } from '@/assets/custom/icon-xiaomi-mimo'
 
 const CUSTOM_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   Sub2API: IconSub2api,
+  XiaomiMiMo: IconXiaomiMimo,
+}
+
+function isImageIconName(iconName: string): boolean {
+  return (
+    iconName.startsWith('/') ||
+    iconName.startsWith('http://') ||
+    iconName.startsWith('https://') ||
+    /\.(webp|png|svg|jpe?g|gif)(?:\?.*)?$/i.test(iconName)
+  )
 }
 
 /**
@@ -103,6 +114,19 @@ export function getLobeIcon(
       >
         ?
       </div>
+    )
+  }
+
+  if (isImageIconName(trimmedName)) {
+    return (
+      <img
+        src={trimmedName}
+        alt=''
+        width={size}
+        height={size}
+        className='object-contain'
+        draggable={false}
+      />
     )
   }
 
