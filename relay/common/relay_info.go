@@ -358,6 +358,20 @@ func GenRelayInfoWs(c *gin.Context, ws *websocket.Conn) *RelayInfo {
 	return info
 }
 
+func GenRelayInfoResponsesWebsocket(c *gin.Context, ws *websocket.Conn) *RelayInfo {
+	info := genBaseRelayInfo(c, &dto.BaseRequest{})
+	info.RelayFormat = types.RelayFormatOpenAIResponses
+	info.RelayMode = relayconstant.RelayModeResponsesWebsocket
+	info.RequestURLPath = "/v1/responses"
+	info.ClientWs = ws
+	info.IsStream = true
+	info.IsFirstRequest = true
+	info.ResponsesUsageInfo = &ResponsesUsageInfo{
+		BuiltInTools: make(map[string]*BuildInToolInfo),
+	}
+	return info
+}
+
 func GenRelayInfoClaude(c *gin.Context, request dto.Request) *RelayInfo {
 	info := genBaseRelayInfo(c, request)
 	info.RelayFormat = types.RelayFormatClaude

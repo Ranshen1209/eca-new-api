@@ -54,6 +54,8 @@ const (
 	RelayModeResponsesCompact
 
 	RelayModeAlphaSearch
+
+	RelayModeResponsesWebsocket
 )
 
 func Path2RelayMode(path string) int {

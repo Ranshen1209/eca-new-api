@@ -103,16 +103,8 @@ func (a *Adaptor) Init(info *relaycommon.RelayInfo) {
 }
 
 func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
-	if info.RelayMode == relayconstant.RelayModeRealtime {
-		if strings.HasPrefix(info.ChannelBaseUrl, "https://") {
-			baseUrl := strings.TrimPrefix(info.ChannelBaseUrl, "https://")
-			baseUrl = "wss://" + baseUrl
-			info.ChannelBaseUrl = baseUrl
-		} else if strings.HasPrefix(info.ChannelBaseUrl, "http://") {
-			baseUrl := strings.TrimPrefix(info.ChannelBaseUrl, "http://")
-			baseUrl = "ws://" + baseUrl
-			info.ChannelBaseUrl = baseUrl
-		}
+	if info.RelayMode == relayconstant.RelayModeRealtime || info.RelayMode == relayconstant.RelayModeResponsesWebsocket {
+		info.ChannelBaseUrl = relaycommon.WebSocketURLFromHTTPBase(info.ChannelBaseUrl)
 	}
 	switch info.ChannelType {
 	case constant.ChannelTypeAzure:
@@ -229,6 +221,9 @@ func (a *Adaptor) SetupRequestHeader(c *gin.Context, header *http.Header, info *
 		if !hasAuthOverride {
 			header.Set("Authorization", "Bearer "+info.ApiKey)
 		}
+	}
+	if info.RelayMode == relayconstant.RelayModeResponsesWebsocket {
+		copyResponsesWebsocketClientHeaders(c, header)
 	}
 	if info.ChannelType == constant.ChannelTypeOpenRouter {
 		if header.Get("HTTP-Referer") == "" {
@@ -625,7 +620,7 @@ func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, request
 		info.RelayMode == relayconstant.RelayModeAudioTranslation ||
 		(info.RelayMode == relayconstant.RelayModeImagesEdits && !isJSONRequest(c)) {
 		return channel.DoFormRequest(a, c, info, requestBody)
-	} else if info.RelayMode == relayconstant.RelayModeRealtime {
+	} else if info.RelayMode == relayconstant.RelayModeRealtime || info.RelayMode == relayconstant.RelayModeResponsesWebsocket {
 		return channel.DoWssRequest(a, c, info, requestBody)
 	} else {
 		return channel.DoApiRequest(a, c, info, requestBody)
@@ -636,6 +631,8 @@ func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycom
 	switch info.RelayMode {
 	case relayconstant.RelayModeRealtime:
 		err, usage = OpenaiRealtimeHandler(c, info)
+	case relayconstant.RelayModeResponsesWebsocket:
+		err, usage = OpenaiResponsesWebsocketHandler(c, info)
 	case relayconstant.RelayModeAudioSpeech:
 		usage = OpenaiTTSHandler(c, resp, info)
 	case relayconstant.RelayModeAudioTranslation:

@@ -29,6 +29,12 @@ func TestSanitizeURLForLogMasksSensitiveQueryValues(t *testing.T) {
 	assert.Equal(t, "2024-02-01", query.Get("api-version"))
 }
 
+func TestWebSocketURLFromHTTPBase(t *testing.T) {
+	assert.Equal(t, "wss://cliproxy.example/v1", WebSocketURLFromHTTPBase("https://cliproxy.example/v1"))
+	assert.Equal(t, "ws://127.0.0.1:8317", WebSocketURLFromHTTPBase("http://127.0.0.1:8317"))
+	assert.Equal(t, "ws://already", WebSocketURLFromHTTPBase("ws://already"))
+}
+
 func TestSanitizeURLForLogMasksAWSAndSecretLikeQueryKeys(t *testing.T) {
 	rawURL := "https://example.test/path?X-Amz-Credential=credential&X-Amz-Signature=signature&session_token=session&client_secret=secret&model=gpt-test"
 

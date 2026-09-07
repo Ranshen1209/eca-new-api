@@ -1,0 +1,238 @@
+package openai
+
+import (
+	"fmt"
+	"net/http"
+	"strings"
+
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
+	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	"github.com/QuantumNous/new-api/relay/helper"
+	"github.com/QuantumNous/new-api/relaykit/dto"
+	"github.com/QuantumNous/new-api/relaykit/types"
+
+	"github.com/bytedance/gopkg/util/gopool"
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
+)
+
+var responsesWebsocketClientHeaders = []string{
+	"User-Agent",
+	"Originator",
+	"Version",
+	"OpenAI-Beta",
+	"ChatGPT-Account-ID",
+	"ChatGPT-Account-Id",
+}
+
+func copyResponsesWebsocketClientHeaders(c *gin.Context, header *http.Header) {
+	if c == nil || c.Request == nil || header == nil {
+		return
+	}
+	for _, name := range responsesWebsocketClientHeaders {
+		value := strings.TrimSpace(c.Request.Header.Get(name))
+		if value != "" {
+			header.Set(name, value)
+		}
+	}
+}
+
+// ResponsesWebsocketRequestModel reads the model from a Codex/OpenAI
+// Responses WebSocket client frame. Official clients send it on response.create.
+func ResponsesWebsocketRequestModel(payload []byte) string {
+	if model := strings.TrimSpace(gjson.GetBytes(payload, "model").String()); model != "" {
+		return model
+	}
+	return strings.TrimSpace(gjson.GetBytes(payload, "response.model").String())
+}
+
+func RewriteResponsesWebsocketUpstreamModel(payload []byte, upstreamModel string) []byte {
+	if strings.TrimSpace(upstreamModel) == "" {
+		return payload
+	}
+	if strings.TrimSpace(gjson.GetBytes(payload, "model").String()) == "" {
+		return payload
+	}
+	updated, err := sjson.SetBytes(payload, "model", upstreamModel)
+	if err != nil {
+		return payload
+	}
+	return updated
+}
+
+func accumulateResponsesWebsocketUsage(info *relaycommon.RelayInfo, usage *dto.Usage, event dto.ResponsesStreamResponse, imageCounter *relaycommon.ImageGenerationCallCounter, imageCommitted *bool) {
+	if usage == nil {
+		return
+	}
+	switch event.Type {
+	case "response.completed", "response.done":
+		if event.Response != nil {
+			if event.Response.Usage != nil {
+				addResponsesWebsocketUsage(usage, event.Response.Usage)
+			}
+			if imageCommitted != nil && !*imageCommitted && imageCounter != nil {
+				if relaycommon.IsNonBillableResponsesStatus(event.Response.Status) {
+					imageCounter.Reset()
+					imageCounter.Commit(info)
+					*imageCommitted = true
+				} else {
+					for i := range event.Response.Output {
+						idx := i
+						imageCounter.Observe(&event.Response.Output[i], &idx)
+					}
+					imageCounter.Commit(info)
+					*imageCommitted = true
+				}
+			}
+		} else if imageCommitted != nil && !*imageCommitted && imageCounter != nil {
+			imageCounter.Commit(info)
+			*imageCommitted = true
+		}
+	case "response.failed", "response.incomplete", "response.cancelled", "response.canceled":
+		if imageCommitted != nil && !*imageCommitted && imageCounter != nil {
+			imageCounter.Reset()
+			imageCounter.Commit(info)
+			*imageCommitted = true
+		}
+	case dto.ResponsesOutputTypeItemDone:
+		if event.Item == nil || info == nil {
+			return
+		}
+		switch event.Item.Type {
+		case dto.BuildInCallWebSearchCall:
+			info.CountBillableToolCall(dto.BuildInCallWebSearchCall, "")
+		case dto.BuildInCallFileSearchCall:
+			info.CountBillableToolCall(dto.BuildInCallFileSearchCall, "")
+		case dto.BuildInCallFunctionCall:
+			info.CountBillableToolCall(dto.BuildInCallFunctionCall, event.Item.Name)
+		case dto.ResponsesOutputTypeImageGenerationCall:
+			if imageCommitted != nil && !*imageCommitted && imageCounter != nil {
+				imageCounter.Observe(event.Item, event.OutputIndex)
+			}
+		}
+	}
+}
+
+func addResponsesWebsocketUsage(total *dto.Usage, part *dto.Usage) {
+	if total == nil || part == nil {
+		return
+	}
+	prompt := part.PromptTokens
+	if prompt == 0 {
+		prompt = part.InputTokens
+	}
+	completion := part.CompletionTokens
+	if completion == 0 {
+		completion = part.OutputTokens
+	}
+	total.PromptTokens += prompt
+	total.CompletionTokens += completion
+	if part.TotalTokens != 0 {
+		total.TotalTokens += part.TotalTokens
+	} else {
+		total.TotalTokens += prompt + completion
+	}
+	total.PromptTokensDetails.CachedTokens += part.PromptTokensDetails.CachedTokens
+	total.PromptTokensDetails.CacheWriteTokens += part.PromptTokensDetails.CacheWriteTokens
+	if part.InputTokensDetails != nil {
+		total.PromptTokensDetails.CachedTokens += part.InputTokensDetails.CachedTokens
+		total.PromptTokensDetails.CacheWriteTokens += part.InputTokensDetails.CacheWriteTokens
+	}
+}
+
+func OpenaiResponsesWebsocketHandler(c *gin.Context, info *relaycommon.RelayInfo) (*types.NewAPIError, *dto.Usage) {
+	if info == nil || info.ClientWs == nil || info.TargetWs == nil {
+		return types.NewError(fmt.Errorf("invalid websocket connection"), types.ErrorCodeBadResponse), nil
+	}
+
+	info.IsStream = true
+	clientConn := info.ClientWs
+	targetConn := info.TargetWs
+	clientClosed := make(chan struct{})
+	targetClosed := make(chan struct{})
+	errChan := make(chan error, 2)
+	usage := &dto.Usage{}
+	imageCounter := &relaycommon.ImageGenerationCallCounter{}
+	imageCommitted := false
+
+	gopool.Go(func() {
+		defer func() {
+			if r := recover(); r != nil {
+				errChan <- fmt.Errorf("panic in client reader: %v", r)
+			}
+		}()
+		for {
+			select {
+			case <-c.Done():
+				return
+			default:
+				_, message, err := clientConn.ReadMessage()
+				if err != nil {
+					if !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+						errChan <- fmt.Errorf("error reading from client: %v", err)
+					}
+					close(clientClosed)
+					return
+				}
+				if info.IsModelMapped && info.UpstreamModelName != "" {
+					message = RewriteResponsesWebsocketUpstreamModel(message, info.UpstreamModelName)
+				}
+				if err := helper.WssString(c, targetConn, string(message)); err != nil {
+					errChan <- fmt.Errorf("error writing to target: %v", err)
+					return
+				}
+			}
+		}
+	})
+
+	gopool.Go(func() {
+		defer func() {
+			if r := recover(); r != nil {
+				errChan <- fmt.Errorf("panic in target reader: %v", r)
+			}
+		}()
+		for {
+			select {
+			case <-c.Done():
+				return
+			default:
+				_, message, err := targetConn.ReadMessage()
+				if err != nil {
+					if !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+						errChan <- fmt.Errorf("error reading from target: %v", err)
+					}
+					close(targetClosed)
+					return
+				}
+				info.SetFirstResponseTime()
+				var streamResponse dto.ResponsesStreamResponse
+				if unmarshalErr := common.Unmarshal(message, &streamResponse); unmarshalErr == nil && streamResponse.Type != "" {
+					accumulateResponsesWebsocketUsage(info, usage, streamResponse, imageCounter, &imageCommitted)
+				}
+				if err := helper.WssString(c, clientConn, string(message)); err != nil {
+					errChan <- fmt.Errorf("error writing to client: %v", err)
+					return
+				}
+			}
+		}
+	})
+
+	select {
+	case <-clientClosed:
+	case <-targetClosed:
+	case err := <-errChan:
+		logger.LogError(c, "responses websocket error: "+err.Error())
+	case <-c.Done():
+	}
+
+	if usage.TotalTokens == 0 && (usage.PromptTokens != 0 || usage.CompletionTokens != 0) {
+		usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
+	}
+	if !imageCommitted {
+		imageCounter.Commit(info)
+	}
+	return nil, usage
+}

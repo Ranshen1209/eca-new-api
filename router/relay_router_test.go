@@ -89,6 +89,21 @@ func TestListModelsSupportsOpenAIAndGeminiAuthentication(t *testing.T) {
 	}
 }
 
+func TestGetResponsesDoesNotReturnInvalidURL(t *testing.T) {
+	setupRelayRouterTestDB(t)
+
+	engine := gin.New()
+	SetRelayRouter(engine)
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
+	engine.ServeHTTP(recorder, request)
+
+	require.NotEqual(t, http.StatusNotFound, recorder.Code)
+	require.Equal(t, http.StatusUnauthorized, recorder.Code)
+	assert.NotContains(t, recorder.Body.String(), "Invalid URL")
+}
+
 func setupRelayRouterTestDB(t *testing.T) {
 	t.Helper()
 

@@ -80,6 +80,10 @@ func SetRelayRouter(router *gin.Engine) {
 		})
 	}
 	{
+		responsesWsRouter := relayV1Router.Group("")
+		responsesWsRouter.GET("/responses", controller.RelayResponsesWebsocket)
+	}
+	{
 		//http router
 		httpRouter := relayV1Router.Group("")
 		httpRouter.Use(middleware.Distribute())

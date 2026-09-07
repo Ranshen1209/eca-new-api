@@ -23,6 +23,18 @@ type HasImage interface {
 	HasImage() bool
 }
 
+// WebSocketURLFromHTTPBase converts an HTTP(S) channel base URL to ws/wss.
+func WebSocketURLFromHTTPBase(baseURL string) string {
+	switch {
+	case strings.HasPrefix(baseURL, "https://"):
+		return "wss://" + strings.TrimPrefix(baseURL, "https://")
+	case strings.HasPrefix(baseURL, "http://"):
+		return "ws://" + strings.TrimPrefix(baseURL, "http://")
+	default:
+		return baseURL
+	}
+}
+
 func GetFullRequestURL(baseURL string, requestURL string, channelType int) string {
 	fullRequestURL := fmt.Sprintf("%s%s", baseURL, requestURL)
 
