@@ -144,13 +144,22 @@ func addResponsesWebsocketUsage(total *dto.Usage, part *dto.Usage) {
 }
 
 func OpenaiResponsesWebsocketHandler(c *gin.Context, info *relaycommon.RelayInfo) (*types.NewAPIError, *dto.Usage) {
-	if info == nil || info.ClientWs == nil || info.TargetWs == nil {
+	if info == nil {
+		return types.NewError(fmt.Errorf("invalid websocket connection"), types.ErrorCodeBadResponse), nil
+	}
+	clientConn := helper.ResponsesWebsocketConnFromContext(c, helper.ContextKeyResponsesWebsocketClient)
+	if clientConn == nil {
+		clientConn = helper.NewResponsesWebsocketConn(info.ClientWs)
+	}
+	targetConn := helper.ResponsesWebsocketConnFromContext(c, helper.ContextKeyResponsesWebsocketTarget)
+	if targetConn == nil {
+		targetConn = helper.NewResponsesWebsocketConn(info.TargetWs)
+	}
+	if clientConn == nil || targetConn == nil {
 		return types.NewError(fmt.Errorf("invalid websocket connection"), types.ErrorCodeBadResponse), nil
 	}
 
 	info.IsStream = true
-	clientConn := info.ClientWs
-	targetConn := info.TargetWs
 	clientClosed := make(chan struct{})
 	targetClosed := make(chan struct{})
 	errChan := make(chan error, 2)
@@ -163,27 +172,22 @@ func OpenaiResponsesWebsocketHandler(c *gin.Context, info *relaycommon.RelayInfo
 			if r := recover(); r != nil {
 				errChan <- fmt.Errorf("panic in client reader: %v", r)
 			}
+			close(clientClosed)
 		}()
 		for {
-			select {
-			case <-c.Done():
+			messageType, message, err := clientConn.Read()
+			if err != nil {
+				if !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
+					errChan <- fmt.Errorf("error reading from client: %v", err)
+				}
 				return
-			default:
-				_, message, err := clientConn.ReadMessage()
-				if err != nil {
-					if !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-						errChan <- fmt.Errorf("error reading from client: %v", err)
-					}
-					close(clientClosed)
-					return
-				}
-				if info.IsModelMapped && info.UpstreamModelName != "" {
-					message = RewriteResponsesWebsocketUpstreamModel(message, info.UpstreamModelName)
-				}
-				if err := helper.WssString(c, targetConn, string(message)); err != nil {
-					errChan <- fmt.Errorf("error writing to target: %v", err)
-					return
-				}
+			}
+			if info.IsModelMapped && info.UpstreamModelName != "" {
+				message = RewriteResponsesWebsocketUpstreamModel(message, info.UpstreamModelName)
+			}
+			if err := targetConn.Write(messageType, message); err != nil {
+				errChan <- fmt.Errorf("error writing to target: %v", err)
+				return
 			}
 		}
 	})
@@ -193,29 +197,24 @@ func OpenaiResponsesWebsocketHandler(c *gin.Context, info *relaycommon.RelayInfo
 			if r := recover(); r != nil {
 				errChan <- fmt.Errorf("panic in target reader: %v", r)
 			}
+			close(targetClosed)
 		}()
 		for {
-			select {
-			case <-c.Done():
+			messageType, message, err := targetConn.Read()
+			if err != nil {
+				if !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
+					errChan <- fmt.Errorf("error reading from target: %v", err)
+				}
 				return
-			default:
-				_, message, err := targetConn.ReadMessage()
-				if err != nil {
-					if !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-						errChan <- fmt.Errorf("error reading from target: %v", err)
-					}
-					close(targetClosed)
-					return
-				}
-				info.SetFirstResponseTime()
-				var streamResponse dto.ResponsesStreamResponse
-				if unmarshalErr := common.Unmarshal(message, &streamResponse); unmarshalErr == nil && streamResponse.Type != "" {
-					accumulateResponsesWebsocketUsage(info, usage, streamResponse, imageCounter, &imageCommitted)
-				}
-				if err := helper.WssString(c, clientConn, string(message)); err != nil {
-					errChan <- fmt.Errorf("error writing to client: %v", err)
-					return
-				}
+			}
+			info.SetFirstResponseTime()
+			var streamResponse dto.ResponsesStreamResponse
+			if unmarshalErr := common.Unmarshal(message, &streamResponse); unmarshalErr == nil && streamResponse.Type != "" {
+				accumulateResponsesWebsocketUsage(info, usage, streamResponse, imageCounter, &imageCommitted)
+			}
+			if err := clientConn.Write(messageType, message); err != nil {
+				errChan <- fmt.Errorf("error writing to client: %v", err)
+				return
 			}
 		}
 	})
@@ -225,7 +224,6 @@ func OpenaiResponsesWebsocketHandler(c *gin.Context, info *relaycommon.RelayInfo
 	case <-targetClosed:
 	case err := <-errChan:
 		logger.LogError(c, "responses websocket error: "+err.Error())
-	case <-c.Done():
 	}
 
 	if usage.TotalTokens == 0 && (usage.PromptTokens != 0 || usage.CompletionTokens != 0) {

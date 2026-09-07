@@ -44,9 +44,11 @@ func ResponsesWebsocketHelper(c *gin.Context, info *relaycommon.RelayInfo, first
 		return types.NewError(fmt.Errorf("invalid websocket connection"), types.ErrorCodeDoRequestFailed)
 	}
 	info.TargetWs = target
-	defer info.TargetWs.Close()
+	targetConn := helper.NewResponsesWebsocketConn(target)
+	c.Set(helper.ContextKeyResponsesWebsocketTarget, targetConn)
+	defer targetConn.Close(websocket.CloseNormalClosure, "")
 
-	if err := helper.WssString(c, info.TargetWs, string(firstClientMessage)); err != nil {
+	if err := targetConn.Write(websocket.TextMessage, firstClientMessage); err != nil {
 		return types.NewError(err, types.ErrorCodeDoRequestFailed)
 	}
 

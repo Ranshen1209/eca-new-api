@@ -51,7 +51,7 @@ func ApplyUpstreamBodyMetadata(req *http.Request, body io.Reader) {
 func SetupApiRequestHeader(info *common.RelayInfo, c *gin.Context, req *http.Header) {
 	if info.RelayMode == constant.RelayModeAudioTranscription || info.RelayMode == constant.RelayModeAudioTranslation {
 		// multipart/form-data
-	} else if info.RelayMode == constant.RelayModeRealtime {
+	} else if info.RelayMode == constant.RelayModeRealtime || info.RelayMode == constant.RelayModeResponsesWebsocket {
 		// websocket
 	} else {
 		req.Set("Content-Type", c.Request.Header.Get("Content-Type"))
@@ -97,6 +97,8 @@ var passthroughSkipHeaderNamesLower = map[string]struct{}{
 	"sec-websocket-key":        {},
 	"sec-websocket-version":    {},
 	"sec-websocket-extensions": {},
+	"sec-websocket-protocol":   {},
+	"sec-websocket-accept":     {},
 }
 
 var headerPassthroughRegexCache sync.Map // map[string]*regexp.Regexp
@@ -391,10 +393,31 @@ func DoWssRequest(a Adaptor, c *gin.Context, info *common.RelayInfo, requestBody
 	for key, value := range headerOverride {
 		targetHeader.Set(key, value)
 	}
-	targetHeader.Set("Content-Type", c.Request.Header.Get("Content-Type"))
-	targetConn, _, err := websocket.DefaultDialer.Dial(fullRequestURL, targetHeader)
+	if contentType := strings.TrimSpace(c.Request.Header.Get("Content-Type")); contentType != "" {
+		targetHeader.Set("Content-Type", contentType)
+	}
+	for _, name := range []string{
+		"Upgrade",
+		"Connection",
+		"Sec-WebSocket-Key",
+		"Sec-WebSocket-Version",
+		"Sec-WebSocket-Extensions",
+		"Sec-WebSocket-Accept",
+		"Sec-WebSocket-Protocol",
+	} {
+		targetHeader.Del(name)
+	}
+	dialer := *websocket.DefaultDialer
+	dialer.HandshakeTimeout = 30 * time.Second
+	targetConn, resp, err := dialer.Dial(fullRequestURL, targetHeader)
 	if err != nil {
-		return nil, fmt.Errorf("dial failed to %s: %w", common.SanitizeURLForLog(fullRequestURL), err)
+		status := 0
+		if resp != nil {
+			status = resp.StatusCode
+			_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 512))
+			_ = resp.Body.Close()
+		}
+		return nil, fmt.Errorf("dial failed to %s (status %d): %w", common.SanitizeURLForLog(fullRequestURL), status, err)
 	}
 	// send request body
 	//all, err := io.ReadAll(requestBody)

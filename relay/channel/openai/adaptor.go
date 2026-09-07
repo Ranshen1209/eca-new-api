@@ -224,6 +224,9 @@ func (a *Adaptor) SetupRequestHeader(c *gin.Context, header *http.Header, info *
 	}
 	if info.RelayMode == relayconstant.RelayModeResponsesWebsocket {
 		copyResponsesWebsocketClientHeaders(c, header)
+		if strings.TrimSpace(header.Get("OpenAI-Beta")) == "" {
+			header.Set("OpenAI-Beta", "responses_websockets=2026-02-06")
+		}
 	}
 	if info.ChannelType == constant.ChannelTypeOpenRouter {
 		if header.Get("HTTP-Referer") == "" {

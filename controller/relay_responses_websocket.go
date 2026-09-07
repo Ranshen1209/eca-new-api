@@ -44,18 +44,21 @@ func RelayResponsesWebsocket(c *gin.Context) {
 		})
 		return
 	}
-	defer ws.Close()
+	clientConn := helper.NewResponsesWebsocketConn(ws)
+	c.Set(helper.ContextKeyResponsesWebsocketClient, clientConn)
+	defer clientConn.Close(websocket.CloseNormalClosure, "")
 
 	var newAPIError *types.NewAPIError
 	defer func() {
 		if newAPIError != nil {
 			logger.LogError(c, fmt.Sprintf("relay error: %s", common.LocalLogPreview(newAPIError.Error())))
 			newAPIError.SetMessage(common.MessageWithRequestId(newAPIError.Error(), requestId))
-			helper.WssError(c, ws, newAPIError.ToOpenAIError())
+			helper.WriteResponsesWebsocketError(clientConn, newAPIError.ToOpenAIError())
+			clientConn.Close(websocket.CloseInternalServerErr, "")
 		}
 	}()
 
-	_, firstMessage, err := ws.ReadMessage()
+	_, firstMessage, err := clientConn.Read()
 	if err != nil {
 		newAPIError = types.NewError(fmt.Errorf("failed to read websocket request"), types.ErrorCodeInvalidRequest)
 		return
