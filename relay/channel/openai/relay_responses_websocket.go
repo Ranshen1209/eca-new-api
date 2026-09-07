@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync/atomic"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -169,6 +170,7 @@ func OpenaiResponsesWebsocketHandler(c *gin.Context, info *relaycommon.RelayInfo
 	usage := &dto.Usage{}
 	imageCounter := &relaycommon.ImageGenerationCallCounter{}
 	imageCommitted := false
+	var completed atomic.Bool
 
 	gopool.Go(func() {
 		defer func() {
@@ -207,6 +209,9 @@ func OpenaiResponsesWebsocketHandler(c *gin.Context, info *relaycommon.RelayInfo
 			info.SetFirstResponseTime()
 			var streamResponse dto.ResponsesStreamResponse
 			if unmarshalErr := common.Unmarshal(message, &streamResponse); unmarshalErr == nil && streamResponse.Type != "" {
+				if helper.IsResponsesWebsocketCompletionEvent(streamResponse.Type) {
+					completed.Store(true)
+				}
 				accumulateResponsesWebsocketUsage(info, usage, streamResponse, imageCounter, &imageCommitted)
 			}
 			if err := clientConn.Write(messageType, message); err != nil {
@@ -221,8 +226,14 @@ func OpenaiResponsesWebsocketHandler(c *gin.Context, info *relaycommon.RelayInfo
 		if !websocket.IsCloseError(result.err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
 			logger.LogError(c, "responses websocket error: "+result.err.Error())
 		}
-		code, reason := helper.ResponsesWebsocketClientCloseCode(result.err)
-		clientConn.Close(code, reason)
+		if !completed.Load() {
+			helper.WriteResponsesWebsocketFailedTurn(clientConn, types.OpenAIError{
+				Message: "upstream websocket closed before response.completed",
+				Type:    "server_error",
+				Code:    "upstream_closed",
+			})
+		}
+		clientConn.Close(websocket.CloseNormalClosure, "")
 	}
 
 	if usage.TotalTokens == 0 && (usage.PromptTokens != 0 || usage.CompletionTokens != 0) {

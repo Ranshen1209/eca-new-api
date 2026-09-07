@@ -2,8 +2,10 @@ package helper
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -148,17 +150,64 @@ func ResponsesWebsocketClientCloseCode(err error) (int, string) {
 }
 
 func WriteResponsesWebsocketError(conn *ResponsesWebsocketConn, openaiError types.OpenAIError) {
+	WriteResponsesWebsocketFailedTurn(conn, openaiError)
+}
+
+func IsResponsesWebsocketCompletionEvent(eventType string) bool {
+	switch strings.TrimSpace(eventType) {
+	case "response.completed", "response.done", "response.failed", "response.incomplete", "response.cancelled", "response.canceled":
+		return true
+	default:
+		return false
+	}
+}
+
+func ResponsesWebsocketFailedTurnPayloads(openaiError types.OpenAIError) [][]byte {
+	message := strings.TrimSpace(openaiError.Message)
+	if message == "" {
+		message = "upstream websocket closed before response.completed"
+	}
+	errType := strings.TrimSpace(openaiError.Type)
+	if errType == "" {
+		errType = "server_error"
+	}
+	code := openaiError.Code
+	if code == nil || strings.TrimSpace(fmt.Sprint(code)) == "" {
+		code = "upstream_closed"
+	}
+	detail := map[string]any{
+		"type":    errType,
+		"code":    code,
+		"message": message,
+	}
+	response := map[string]any{
+		"status": "failed",
+		"error":  detail,
+		"output": []any{},
+	}
+	events := []map[string]any{
+		{"type": "error", "error": openaiError},
+		{"type": "response.failed", "response": response},
+		{"type": "response.completed", "response": response},
+	}
+	payloads := make([][]byte, 0, len(events))
+	for _, event := range events {
+		payload, err := common.Marshal(event)
+		if err != nil {
+			continue
+		}
+		payloads = append(payloads, payload)
+	}
+	return payloads
+}
+
+func WriteResponsesWebsocketFailedTurn(conn *ResponsesWebsocketConn, openaiError types.OpenAIError) {
 	if conn == nil {
 		return
 	}
-	payload, err := common.Marshal(map[string]any{
-		"type":  "error",
-		"error": openaiError,
-	})
-	if err != nil {
-		return
+	for _, payload := range ResponsesWebsocketFailedTurnPayloads(openaiError) {
+		_ = conn.Write(websocket.TextMessage, payload)
 	}
-	_ = conn.Write(websocket.TextMessage, payload)
 }
 
 func ResponsesWebsocketConnFromContext(c interface{ Get(string) (any, bool) }, key string) *ResponsesWebsocketConn {

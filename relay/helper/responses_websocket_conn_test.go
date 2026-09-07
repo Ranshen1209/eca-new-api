@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 )
@@ -88,4 +90,32 @@ func TestResponsesWebsocketClientCloseCode(t *testing.T) {
 	code, reason = ResponsesWebsocketClientCloseCode(io.EOF)
 	require.Equal(t, websocket.CloseServiceRestart, code)
 	require.Equal(t, ResponsesWebsocketHTTPReplayCloseReason, reason)
+}
+
+func TestResponsesWebsocketFailedTurnPayloadsIncludeCompleted(t *testing.T) {
+	payloads := ResponsesWebsocketFailedTurnPayloads(types.OpenAIError{
+		Message: "upstream closed",
+		Type:    "server_error",
+		Code:    "upstream_closed",
+	})
+	require.Len(t, payloads, 3)
+
+	var typesFound []string
+	for _, payload := range payloads {
+		var event map[string]any
+		require.NoError(t, json.Unmarshal(payload, &event))
+		typesFound = append(typesFound, event["type"].(string))
+	}
+	require.Equal(t, []string{"error", "response.failed", "response.completed"}, typesFound)
+
+	var completed map[string]any
+	require.NoError(t, json.Unmarshal(payloads[2], &completed))
+	response := completed["response"].(map[string]any)
+	require.Equal(t, "failed", response["status"])
+}
+
+func TestIsResponsesWebsocketCompletionEvent(t *testing.T) {
+	require.True(t, IsResponsesWebsocketCompletionEvent("response.completed"))
+	require.True(t, IsResponsesWebsocketCompletionEvent("response.failed"))
+	require.False(t, IsResponsesWebsocketCompletionEvent("response.created"))
 }
