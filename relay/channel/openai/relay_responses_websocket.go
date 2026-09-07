@@ -12,6 +12,7 @@ import (
 	"github.com/QuantumNous/new-api/relay/helper"
 	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/relaykit/types"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/bytedance/gopkg/util/gopool"
 	"github.com/gin-gonic/gin"
@@ -21,8 +22,6 @@ import (
 )
 
 var responsesWebsocketClientHeaders = []string{
-	"User-Agent",
-	"Originator",
 	"Version",
 	"OpenAI-Beta",
 	"ChatGPT-Account-ID",
@@ -33,10 +32,24 @@ func copyResponsesWebsocketClientHeaders(c *gin.Context, header *http.Header) {
 	if c == nil || c.Request == nil || header == nil {
 		return
 	}
-	for _, name := range responsesWebsocketClientHeaders {
+	codexHeaders := operation_setting.CodexCliPassThroughHeaders()
+	names := make([]string, 0, len(responsesWebsocketClientHeaders)+len(codexHeaders))
+	names = append(names, responsesWebsocketClientHeaders...)
+	names = append(names, codexHeaders...)
+	seen := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
 		value := strings.TrimSpace(c.Request.Header.Get(name))
 		if value != "" {
 			header.Set(name, value)
+		}
+	}
+	if strings.TrimSpace(header.Get("X-Client-Request-Id")) == "" {
+		if requestID := strings.TrimSpace(c.GetString(common.RequestIdKey)); requestID != "" {
+			header.Set("X-Client-Request-Id", requestID)
 		}
 	}
 }
@@ -153,14 +166,11 @@ func OpenaiResponsesWebsocketHandler(c *gin.Context, info *relaycommon.RelayInfo
 	if info == nil {
 		return types.NewError(fmt.Errorf("invalid websocket connection"), types.ErrorCodeBadResponse), nil
 	}
+	// Use the wrappers already bound to this request. Wrapping info.ClientWs /
+	// info.TargetWs again would start a second readLoop on the same gorilla
+	// connection and split frames across two local sessions.
 	clientConn := helper.ResponsesWebsocketConnFromContext(c, helper.ContextKeyResponsesWebsocketClient)
-	if clientConn == nil {
-		clientConn = helper.NewResponsesWebsocketConn(info.ClientWs)
-	}
 	targetConn := helper.ResponsesWebsocketConnFromContext(c, helper.ContextKeyResponsesWebsocketTarget)
-	if targetConn == nil {
-		targetConn = helper.NewResponsesWebsocketConn(info.TargetWs)
-	}
 	if clientConn == nil || targetConn == nil {
 		return types.NewError(fmt.Errorf("invalid websocket connection"), types.ErrorCodeBadResponse), nil
 	}

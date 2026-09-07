@@ -81,6 +81,12 @@ var claudeCliPassThroughHeaders = []string{
 	"Anthropic-Version",
 }
 
+func CodexCliPassThroughHeaders() []string {
+	cloned := make([]string, len(codexCliPassThroughHeaders))
+	copy(cloned, codexCliPassThroughHeaders)
+	return cloned
+}
+
 func buildPassHeaderTemplate(headers []string) map[string]interface{} {
 	clonedHeaders := make([]string, 0, len(headers))
 	clonedHeaders = append(clonedHeaders, headers...)
