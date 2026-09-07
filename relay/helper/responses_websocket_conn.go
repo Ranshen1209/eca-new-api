@@ -17,6 +17,10 @@ const (
 	ContextKeyResponsesWebsocketClient = "responses_websocket_client"
 	ContextKeyResponsesWebsocketTarget = "responses_websocket_target"
 
+	// ResponsesWebsocketHTTPReplayCloseReason matches CLIProxyAPI / Codex:
+	// close 1012 makes the official CLI fall back to HTTP POST / SSE.
+	ResponsesWebsocketHTTPReplayCloseReason = "upstream requires HTTP replay"
+
 	responsesWebsocketPingWait  = 5 * time.Second
 	responsesWebsocketWriteWait = 60 * time.Second
 	responsesWebsocketReadLimit = 32 << 20
@@ -31,11 +35,12 @@ type responsesWebsocketFrame struct {
 // writers, and automatic pong replies. Codex and CPA send pings while the
 // gateway is still selecting a channel or copying events.
 type ResponsesWebsocketConn struct {
-	conn    *websocket.Conn
-	writeMu sync.Mutex
-	msgs    chan responsesWebsocketFrame
-	readErr error
-	errOnce sync.Once
+	conn      *websocket.Conn
+	writeMu   sync.Mutex
+	closeOnce sync.Once
+	msgs      chan responsesWebsocketFrame
+	readErr   error
+	errOnce   sync.Once
 }
 
 func NewResponsesWebsocketConn(conn *websocket.Conn) *ResponsesWebsocketConn {
@@ -113,14 +118,33 @@ func (c *ResponsesWebsocketConn) Close(code int, reason string) {
 	if c == nil || c.conn == nil {
 		return
 	}
-	c.writeMu.Lock()
-	_ = c.conn.WriteControl(
-		websocket.CloseMessage,
-		websocket.FormatCloseMessage(code, reason),
-		time.Now().Add(time.Second),
-	)
-	c.writeMu.Unlock()
-	_ = c.conn.Close()
+	c.closeOnce.Do(func() {
+		c.writeMu.Lock()
+		_ = c.conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(code, reason),
+			time.Now().Add(time.Second),
+		)
+		c.writeMu.Unlock()
+		_ = c.conn.Close()
+	})
+}
+
+// ResponsesWebsocketClientCloseCode maps an upstream websocket death onto a
+// close code Codex can handle. Abnormal 1006/EOF becomes 1012 so the CLI
+// retries over HTTP instead of reporting a protocol reset.
+func ResponsesWebsocketClientCloseCode(err error) (int, string) {
+	if err == nil {
+		return websocket.CloseNormalClosure, ""
+	}
+	var closeErr *websocket.CloseError
+	if errors.As(err, &closeErr) {
+		switch closeErr.Code {
+		case websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseServiceRestart, websocket.CloseMessageTooBig:
+			return closeErr.Code, closeErr.Text
+		}
+	}
+	return websocket.CloseServiceRestart, ResponsesWebsocketHTTPReplayCloseReason
 }
 
 func WriteResponsesWebsocketError(conn *ResponsesWebsocketConn, openaiError types.OpenAIError) {

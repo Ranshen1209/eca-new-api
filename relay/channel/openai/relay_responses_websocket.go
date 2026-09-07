@@ -143,6 +143,11 @@ func addResponsesWebsocketUsage(total *dto.Usage, part *dto.Usage) {
 	}
 }
 
+type responsesWebsocketCopyErr struct {
+	side string
+	err  error
+}
+
 func OpenaiResponsesWebsocketHandler(c *gin.Context, info *relaycommon.RelayInfo) (*types.NewAPIError, *dto.Usage) {
 	if info == nil {
 		return types.NewError(fmt.Errorf("invalid websocket connection"), types.ErrorCodeBadResponse), nil
@@ -160,9 +165,7 @@ func OpenaiResponsesWebsocketHandler(c *gin.Context, info *relaycommon.RelayInfo
 	}
 
 	info.IsStream = true
-	clientClosed := make(chan struct{})
-	targetClosed := make(chan struct{})
-	errChan := make(chan error, 2)
+	errChan := make(chan responsesWebsocketCopyErr, 2)
 	usage := &dto.Usage{}
 	imageCounter := &relaycommon.ImageGenerationCallCounter{}
 	imageCommitted := false
@@ -170,23 +173,20 @@ func OpenaiResponsesWebsocketHandler(c *gin.Context, info *relaycommon.RelayInfo
 	gopool.Go(func() {
 		defer func() {
 			if r := recover(); r != nil {
-				errChan <- fmt.Errorf("panic in client reader: %v", r)
+				errChan <- responsesWebsocketCopyErr{side: "client", err: fmt.Errorf("panic in client reader: %v", r)}
 			}
-			close(clientClosed)
 		}()
 		for {
 			messageType, message, err := clientConn.Read()
 			if err != nil {
-				if !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
-					errChan <- fmt.Errorf("error reading from client: %v", err)
-				}
+				errChan <- responsesWebsocketCopyErr{side: "client", err: err}
 				return
 			}
 			if info.IsModelMapped && info.UpstreamModelName != "" {
 				message = RewriteResponsesWebsocketUpstreamModel(message, info.UpstreamModelName)
 			}
 			if err := targetConn.Write(messageType, message); err != nil {
-				errChan <- fmt.Errorf("error writing to target: %v", err)
+				errChan <- responsesWebsocketCopyErr{side: "target", err: fmt.Errorf("error writing to target: %v", err)}
 				return
 			}
 		}
@@ -195,16 +195,13 @@ func OpenaiResponsesWebsocketHandler(c *gin.Context, info *relaycommon.RelayInfo
 	gopool.Go(func() {
 		defer func() {
 			if r := recover(); r != nil {
-				errChan <- fmt.Errorf("panic in target reader: %v", r)
+				errChan <- responsesWebsocketCopyErr{side: "target", err: fmt.Errorf("panic in target reader: %v", r)}
 			}
-			close(targetClosed)
 		}()
 		for {
 			messageType, message, err := targetConn.Read()
 			if err != nil {
-				if !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
-					errChan <- fmt.Errorf("error reading from target: %v", err)
-				}
+				errChan <- responsesWebsocketCopyErr{side: "target", err: err}
 				return
 			}
 			info.SetFirstResponseTime()
@@ -213,17 +210,19 @@ func OpenaiResponsesWebsocketHandler(c *gin.Context, info *relaycommon.RelayInfo
 				accumulateResponsesWebsocketUsage(info, usage, streamResponse, imageCounter, &imageCommitted)
 			}
 			if err := clientConn.Write(messageType, message); err != nil {
-				errChan <- fmt.Errorf("error writing to client: %v", err)
+				errChan <- responsesWebsocketCopyErr{side: "client", err: fmt.Errorf("error writing to client: %v", err)}
 				return
 			}
 		}
 	})
 
-	select {
-	case <-clientClosed:
-	case <-targetClosed:
-	case err := <-errChan:
-		logger.LogError(c, "responses websocket error: "+err.Error())
+	result := <-errChan
+	if result.side == "target" {
+		if !websocket.IsCloseError(result.err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
+			logger.LogError(c, "responses websocket error: "+result.err.Error())
+		}
+		code, reason := helper.ResponsesWebsocketClientCloseCode(result.err)
+		clientConn.Close(code, reason)
 	}
 
 	if usage.TotalTokens == 0 && (usage.PromptTokens != 0 || usage.CompletionTokens != 0) {

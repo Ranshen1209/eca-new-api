@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -69,4 +70,22 @@ func TestResponsesWebsocketConnAnswersPingDuringSetup(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("client read loop did not observe the echoed setup frame")
 	}
+}
+
+func TestResponsesWebsocketClientCloseCode(t *testing.T) {
+	code, reason := ResponsesWebsocketClientCloseCode(nil)
+	require.Equal(t, websocket.CloseNormalClosure, code)
+	require.Equal(t, "", reason)
+
+	code, reason = ResponsesWebsocketClientCloseCode(&websocket.CloseError{Code: websocket.CloseServiceRestart, Text: ResponsesWebsocketHTTPReplayCloseReason})
+	require.Equal(t, websocket.CloseServiceRestart, code)
+	require.Equal(t, ResponsesWebsocketHTTPReplayCloseReason, reason)
+
+	code, reason = ResponsesWebsocketClientCloseCode(&websocket.CloseError{Code: websocket.CloseAbnormalClosure, Text: "unexpected EOF"})
+	require.Equal(t, websocket.CloseServiceRestart, code)
+	require.Equal(t, ResponsesWebsocketHTTPReplayCloseReason, reason)
+
+	code, reason = ResponsesWebsocketClientCloseCode(io.EOF)
+	require.Equal(t, websocket.CloseServiceRestart, code)
+	require.Equal(t, ResponsesWebsocketHTTPReplayCloseReason, reason)
 }

@@ -54,7 +54,13 @@ func RelayResponsesWebsocket(c *gin.Context) {
 			logger.LogError(c, fmt.Sprintf("relay error: %s", common.LocalLogPreview(newAPIError.Error())))
 			newAPIError.SetMessage(common.MessageWithRequestId(newAPIError.Error(), requestId))
 			helper.WriteResponsesWebsocketError(clientConn, newAPIError.ToOpenAIError())
-			clientConn.Close(websocket.CloseInternalServerErr, "")
+			code, reason := websocket.ClosePolicyViolation, ""
+			if newAPIError.GetErrorCode() != types.ErrorCodeInvalidRequest &&
+				newAPIError.GetErrorCode() != types.ErrorCodeChannelModelMappedError {
+				code = websocket.CloseServiceRestart
+				reason = helper.ResponsesWebsocketHTTPReplayCloseReason
+			}
+			clientConn.Close(code, reason)
 		}
 	}()
 
