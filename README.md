@@ -55,6 +55,45 @@
 
 ## 📝 Project Description
 
+### ECA internal automatic allowance
+
+The ECA fork can grant an internal allowance to enabled, non-deleted users every
+minute when their wallet balance is at or below a threshold. It is disabled by
+default. Configure the `eca-api` container with:
+
+```yaml
+environment:
+  ECA_AUTO_QUOTA_ENABLED: "true"
+  ECA_AUTO_QUOTA_THRESHOLD_CNY: "100"
+  ECA_AUTO_QUOTA_CREDIT_CNY: "500"
+```
+
+The site must display CNY with a valid `USDExchangeRate`; `BATCH_UPDATE_ENABLED`
+must remain disabled so eligibility uses committed balances. The threshold is
+rounded down to integer quota units and the credit to the nearest quota unit.
+For example, a ¥92 balance receives ¥500 and becomes ¥592. Newly created users
+are included automatically; administrators are included when eligible. API key
+limits are independent and are not changed. Consumption, pricing, used quota,
+request counts and real payment history remain intact.
+
+The master-node system task runner executes `eca_auto_quota` once per minute
+(the scheduler can add up to 15 seconds). Database leases prevent overlapping
+runs. Each user's credit and `eca_quota_grants` audit row commit together; a
+unique user/minute key prevents duplicate grants on retry, including negative
+balances. Deeply overdrawn users receive at most one credit per minute. User
+system logs mirror successful grants, and System Info task history reports
+`credited_users` or a failure. The grant table is the authoritative audit if a
+separate log database is unavailable. Redis credits use the existing wallet
+cache mechanism; a crash between the database commit and cache update can delay
+visibility until cache expiry. No additional credentials or network service are
+required.
+
+Disable by setting `ECA_AUTO_QUOTA_ENABLED: "false"` and recreating only
+`eca-api`. Already granted balances and audit records remain. Back up the
+database and Compose before upgrading, retain the previous image digest, and
+roll back the image/configuration without restoring an old wallet database over
+new consumption. Do not delete grant rows during retry or rollback.
+
 > [!IMPORTANT]
 > - This project is intended solely for lawful and authorized AI API gateway, organization-level authentication, multi-model management, usage analytics, cost accounting, and private deployment scenarios.
 > - Users must lawfully obtain upstream API keys, accounts, model services, and interface permissions, and must comply with upstream terms of service and applicable laws and regulations.
