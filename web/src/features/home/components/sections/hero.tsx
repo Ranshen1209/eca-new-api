@@ -28,7 +28,6 @@ import {
   ECA_REPO_HREF,
   resolveEcaDocsHref,
 } from '@/branding/eca/copy'
-
 import { Button } from '@/components/ui/button'
 import { useStatus } from '@/hooks/use-status'
 
@@ -189,7 +188,7 @@ export function Hero(props: HeroProps) {
                         href={ECA_REPO_HREF}
                         target='_blank'
                         rel='noopener noreferrer'
-                        className='text-foreground/80 hover:text-foreground font-medium underline decoration-foreground/25 underline-offset-2'
+                        className='text-foreground/80 hover:text-foreground decoration-foreground/25 font-medium underline underline-offset-2'
                       />
                     ),
                   }}

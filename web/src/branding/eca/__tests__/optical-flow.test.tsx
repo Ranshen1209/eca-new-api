@@ -29,9 +29,9 @@ describe('EcaOpticalFlow', () => {
     expect(root).not.toBeNull()
     expect(root?.getAttribute('aria-hidden')).toBe('true')
     expect(root?.querySelectorAll('path')).toHaveLength(0)
-    expect(root?.querySelectorAll('.eca-flow-dash, .eca-flow-dash-gold')).toHaveLength(
-      0
-    )
+    expect(
+      root?.querySelectorAll('.eca-flow-dash, .eca-flow-dash-gold')
+    ).toHaveLength(0)
     expect(screen.queryByRole('img')).toBeNull()
   })
 })

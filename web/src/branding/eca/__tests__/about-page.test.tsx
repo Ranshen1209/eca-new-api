@@ -66,11 +66,11 @@ describe('EcaAboutPage', () => {
     const { container } = render(<EcaAboutPage language='zhCN' />)
 
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
+    expect(screen.queryByText('关于 ECA API Gateway')).toBeNull()
     expect(
-      screen.queryByText('关于 ECA API Gateway')
-    ).toBeNull()
-    expect(
-      screen.getByText('此站点仅为 ECA Healthcare 提供服务，不对外提供公开访问。')
+      screen.getByText(
+        '此站点仅为 ECA Healthcare 提供服务，不对外提供公开访问。'
+      )
     ).toBeTruthy()
     expect(
       screen.getByText('如需开通或技术支持，请联系公司信息化专员。')

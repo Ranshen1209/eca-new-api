@@ -57,11 +57,9 @@ export function useHomePageContent(): HomePageContentResult {
           setContent('')
           localStorage.removeItem(STORAGE_KEY)
         }
-      } catch (error) {
+      } catch {
         if (!mounted) return
-        // Optional custom homepage: fall back to the default landing.
-        // eslint-disable-next-line no-console
-        console.error('Failed to load home page content:', error)
+        // Optional content can fail without interrupting the default landing.
       } finally {
         if (mounted) {
           setIsLoaded(true)

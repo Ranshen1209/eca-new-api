@@ -42,7 +42,9 @@ describe('EcaLandingFrame', () => {
     const root = document.querySelector('[data-brand="eca"]')
     expect(root).not.toBeNull()
     expect(root?.className).toContain('min-h-svh')
-    const content = screen.getByRole('heading', { name: 'Landing' }).parentElement
+    const content = screen.getByRole('heading', {
+      name: 'Landing',
+    }).parentElement
     expect(root?.querySelector('.eca-optical-flow')).not.toBeNull()
     expect(content?.className).toContain('z-10')
   })

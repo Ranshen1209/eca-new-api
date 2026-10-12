@@ -41,11 +41,11 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           {loading ? (
             <Skeleton className='absolute inset-0 rounded-full' />
           ) : (
-              <img
-                src={resolveEcaCompactMarkHref(logo)}
-                alt={t('Logo')}
-                className='h-8 w-8 rounded-full object-cover'
-              />
+            <img
+              src={resolveEcaCompactMarkHref(logo)}
+              alt={t('Logo')}
+              className='h-8 w-8 rounded-full object-cover'
+            />
           )}
         </div>
         {loading ? (

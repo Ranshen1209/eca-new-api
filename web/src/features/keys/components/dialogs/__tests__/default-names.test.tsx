@@ -44,11 +44,7 @@ function renderDialog() {
 
   const view = render(
     <QueryClientProvider client={queryClient}>
-      <CCSwitchDialog
-        open
-        onOpenChange={() => undefined}
-        tokenKey='sk-test'
-      />
+      <CCSwitchDialog open onOpenChange={() => undefined} tokenKey='sk-test' />
     </QueryClientProvider>
   )
 

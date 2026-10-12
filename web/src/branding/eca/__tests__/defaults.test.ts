@@ -33,7 +33,10 @@ import {
 import { resolveEcaSystemName } from '../system-name'
 
 const html = readFileSync(
-  path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../index.html'),
+  path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '../../../../index.html'
+  ),
   'utf8'
 )
 
@@ -54,7 +57,7 @@ describe('ECA first-paint defaults', () => {
 
     const brandingDir = path.dirname(fileURLToPath(import.meta.url))
     const configSource = readFileSync(
-      path.resolve(brandingDir, '../../../hooks/use-system-config.ts'),
+      path.resolve(brandingDir, '../../../lib/status-query.ts'),
       'utf8'
     )
     const brandSource = readFileSync(
@@ -68,7 +71,9 @@ describe('ECA first-paint defaults', () => {
       path.resolve(brandingDir, '../../../main.tsx'),
       'utf8'
     )
-    expect(configSource).toContain('resolveEcaSystemName(data.system_name)')
+    expect(configSource).toContain(
+      'resolveEcaSystemName(data.system_name as string | undefined)'
+    )
     expect(brandSource).toContain('resolveEcaSystemName(status?.system_name')
     expect(mainSource).toContain('resolveEcaSystemName(s.system_name')
   })
@@ -116,6 +121,8 @@ describe('ECA first-paint defaults', () => {
     )
     expect(resolveEcaFaviconHref('/custom-mark.png')).toBe('/custom-mark.png')
     expect(resolveEcaCompactMarkHref('/eca-logo.png')).toBe(ECA_MARK_HREF)
-    expect(resolveEcaCompactMarkHref('/custom-mark.png')).toBe('/custom-mark.png')
+    expect(resolveEcaCompactMarkHref('/custom-mark.png')).toBe(
+      '/custom-mark.png'
+    )
   })
 })

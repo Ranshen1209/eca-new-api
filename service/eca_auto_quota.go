@@ -105,7 +105,11 @@ func runEcaAutoQuota(ctx context.Context, cycle int64) (int, error) {
 				count++
 				// The grant table remains authoritative even if a separate log
 				// database is temporarily unavailable after the credit commits.
-				model.RecordLog(id, model.LogTypeSystem, fmt.Sprintf("公司内部自动补额（非实际支付）：增加 %s，余额 %s → %s", logger.LogQuota(credit), logger.LogQuota(grant.QuotaBefore), logger.LogQuota(grant.QuotaAfter)))
+				model.RecordLog(id, model.LogTypeSystem, common.NewMessage("Internal company allowance (not an actual payment): added {{credit}}, balance {{before}} → {{after}}", map[string]any{
+					"credit": logger.LogQuota(credit),
+					"before": logger.LogQuota(grant.QuotaBefore),
+					"after":  logger.LogQuota(grant.QuotaAfter),
+				}))
 				logger.LogInfo(ctx, fmt.Sprintf("internal allowance granted: user_id=%d cycle=%d credit=%d before=%d after=%d", id, cycle, credit, grant.QuotaBefore, grant.QuotaAfter))
 			}
 			lastID = id

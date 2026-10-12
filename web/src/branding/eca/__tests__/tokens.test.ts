@@ -34,9 +34,7 @@ describe('ECA overlay tokens', () => {
       /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.eca-optical-flow::before[\s\S]*animation:\s*none/
     )
     expect(tokensCss).not.toContain('eca-flow-dash')
-    expect(tokensCss).toMatch(
-      /\.eca-optical-flow\s*\{[^}]*inset:\s*0/
-    )
+    expect(tokensCss).toMatch(/\.eca-optical-flow\s*\{[^}]*inset:\s*0/)
   })
 
   test('hides the footer tagline on the company landing', () => {
@@ -58,8 +56,12 @@ describe('ECA overlay tokens', () => {
   })
 
   test('does not crop the company wordmark into a circle', () => {
-    expect(tokensCss).toMatch(/img\[src\*='eca-logo\.png'\][\s\S]*border-radius:\s*0/)
-    expect(tokensCss).toMatch(/img\[src\*='eca-logo\.png'\][\s\S]*object-fit:\s*contain/)
+    expect(tokensCss).toMatch(
+      /img\[src\*='eca-logo\.png'\][\s\S]*border-radius:\s*0/
+    )
+    expect(tokensCss).toMatch(
+      /img\[src\*='eca-logo\.png'\][\s\S]*object-fit:\s*contain/
+    )
     expect(tokensCss).toMatch(
       /div:has\(> img\[src\*='eca-logo\.png'\]\)[\s\S]*border-radius:\s*0/
     )

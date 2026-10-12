@@ -54,8 +54,7 @@ export const ECA_ABOUT_COPY = {
     creditAfter: '.',
   },
   zhCN: {
-    audience:
-      '此站点仅为 ECA Healthcare 提供服务，不对外提供公开访问。',
+    audience: '此站点仅为 ECA Healthcare 提供服务，不对外提供公开访问。',
     supportTitle: '开通与支持',
     support: '如需开通或技术支持，请联系公司信息化专员。',
     creditTitle: '项目来源',
@@ -63,8 +62,7 @@ export const ECA_ABOUT_COPY = {
     creditAfter: ' 二次开发。',
   },
   zhTW: {
-    audience:
-      '此站點僅為 ECA Healthcare 提供服務，不對外提供公開存取。',
+    audience: '此站點僅為 ECA Healthcare 提供服務，不對外提供公開存取。',
     supportTitle: '開通與支援',
     support: '如需開通或技術支援，請聯繫公司資訊化專員。',
     creditTitle: '專案來源',
@@ -113,9 +111,7 @@ export const ECA_ABOUT_COPY = {
   },
 } as const satisfies Record<string, EcaAboutCopy>
 
-export function resolveEcaAboutCopy(
-  language?: string | null
-): EcaAboutCopy {
+export function resolveEcaAboutCopy(language?: string | null): EcaAboutCopy {
   const normalized = (language ?? '').replaceAll('-', '')
   if (normalized === 'zhTW') {
     return ECA_ABOUT_COPY.zhTW
@@ -216,7 +212,7 @@ export const ECA_LANDING_COPY = {
     [SUBTITLE_KEY]:
       "Accédez aux modèles via un protocole API standard et unifié. Propulsez les applications d'IA, gérez les actifs numériques.",
     [APP_SUPPORT_I18N_KEY]:
-      'Prend en charge la configuration en un clic et s\'adapte à la configuration multi-protocole de <repo>ECA API</repo>.',
+      "Prend en charge la configuration en un clic et s'adapte à la configuration multi-protocole de <repo>ECA API</repo>.",
     [FOOTER_TAGLINE_KEY]: '',
     [FOOTER_WITH_KEY]: 'avec',
     [VIEW_PRICING_KEY]: 'Voir les modèles',

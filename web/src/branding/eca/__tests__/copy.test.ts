@@ -54,10 +54,7 @@ const heroSource = readFileSync(
   'utf8'
 )
 const footerSource = readFileSync(
-  path.resolve(
-    brandingDir,
-    '../../../components/layout/components/footer.tsx'
-  ),
+  path.resolve(brandingDir, '../../../components/layout/components/footer.tsx'),
   'utf8'
 )
 const homeApiSource = readFileSync(
@@ -86,9 +83,7 @@ describe('ECA landing copy', () => {
       i18n.t(
         'Access a vast selection of models via a standard, unified API protocol. Power AI applications, manage digital assets, and connect the Future.'
       )
-    ).toBe(
-      '通过统一、标准的接口协议接入模型。承载 AI 应用，管理数字资产。'
-    )
+    ).toBe('通过统一、标准的接口协议接入模型。承载 AI 应用，管理数字资产。')
     expect(i18n.t(APP_SUPPORT_I18N_KEY)).toBe(
       '支持一键配置并适配 <repo>ECA API</repo> 多协议配置'
     )
@@ -101,7 +96,7 @@ describe('ECA landing copy', () => {
     expect(ECA_REPO_HREF).toBe('https://github.com/Ranshen1209/eca-new-api')
     expect(heroSource).toContain('Trans')
     expect(heroSource).toContain('ECA_REPO_HREF')
-    expect(heroSource).toContain("repo:")
+    expect(heroSource).toContain('repo:')
   })
 
   test('fills the About page with company-only service copy when admin content is empty', () => {
@@ -162,7 +157,9 @@ describe('ECA landing copy', () => {
     expect(resolveEcaDocsHref('')).toBe(ECA_DOCS_HREF)
     expect(resolveEcaDocsHref('/docs')).toBe(ECA_DOCS_HREF)
     expect(resolveEcaDocsHref('https://docs.newapi.pro')).toBe(ECA_DOCS_HREF)
-    expect(resolveEcaDocsHref('https://docs.newapi.pro/api/')).toBe(ECA_DOCS_HREF)
+    expect(resolveEcaDocsHref('https://docs.newapi.pro/api/')).toBe(
+      ECA_DOCS_HREF
+    )
     expect(resolveEcaDocsHref('https://example.com/custom-docs')).toBe(
       'https://example.com/custom-docs'
     )
@@ -185,7 +182,9 @@ describe('ECA landing copy', () => {
     expect(footerSource).toContain('https://github.com/QuantumNous/new-api')
     expect(footerSource).not.toContain("{displayName}.{' '}")
     expect(footerSource).not.toMatch(/<\/a>\s*\.\s*\{t\('with'\)/)
-    expect(footerSource).not.toMatch(/<\/a>\s*\.\s*\{t\('footer\.defaultCopyright'\)/)
+    expect(footerSource).not.toMatch(
+      /<\/a>\s*\.\s*\{t\('footer\.defaultCopyright'\)/
+    )
   })
 
   test('uses the ECA-API-KEY env var in the demo request instead of a fake sk- key', () => {
@@ -199,6 +198,8 @@ describe('ECA landing copy', () => {
     expect(homeApiSource).toMatch(
       /\/api\/home_page_content[\s\S]*skipErrorHandler:\s*true/
     )
-    expect(statusApiSource).toMatch(/\/api\/status[\s\S]*skipErrorHandler:\s*true/)
+    expect(statusApiSource).toMatch(
+      /\/api\/status[\s\S]*skipErrorHandler:\s*true/
+    )
   })
 })

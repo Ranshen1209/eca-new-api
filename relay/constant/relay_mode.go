@@ -1,7 +1,6 @@
 package constant
 
 import (
-	"net/http"
 	"strings"
 )
 
@@ -36,10 +35,6 @@ const (
 	RelayModeAudioTranscription // whisper
 	RelayModeAudioTranslation   // whisper
 
-	RelayModeSunoFetch
-	RelayModeSunoFetchByID
-	RelayModeSunoSubmit
-
 	RelayModeVideoFetchByID
 	RelayModeVideoSubmit
 
@@ -54,8 +49,6 @@ const (
 	RelayModeResponsesCompact
 
 	RelayModeAlphaSearch
-
-	RelayModeResponsesWebsocket
 )
 
 func Path2RelayMode(path string) int {
@@ -139,18 +132,6 @@ func Path2RelayModeMidjourney(path string) int {
 		relayMode = RelayModeMidjourneyTaskImageSeed
 	} else if strings.HasSuffix(path, "/list-by-condition") {
 		relayMode = RelayModeMidjourneyTaskFetchByCondition
-	}
-	return relayMode
-}
-
-func Path2RelaySuno(method, path string) int {
-	relayMode := RelayModeUnknown
-	if method == http.MethodPost && strings.HasSuffix(path, "/fetch") {
-		relayMode = RelayModeSunoFetch
-	} else if method == http.MethodGet && strings.Contains(path, "/fetch/") {
-		relayMode = RelayModeSunoFetchByID
-	} else if strings.Contains(path, "/submit/") {
-		relayMode = RelayModeSunoSubmit
 	}
 	return relayMode
 }

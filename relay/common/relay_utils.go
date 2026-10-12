@@ -23,18 +23,6 @@ type HasImage interface {
 	HasImage() bool
 }
 
-// WebSocketURLFromHTTPBase converts an HTTP(S) channel base URL to ws/wss.
-func WebSocketURLFromHTTPBase(baseURL string) string {
-	switch {
-	case strings.HasPrefix(baseURL, "https://"):
-		return "wss://" + strings.TrimPrefix(baseURL, "https://")
-	case strings.HasPrefix(baseURL, "http://"):
-		return "ws://" + strings.TrimPrefix(baseURL, "http://")
-	default:
-		return baseURL
-	}
-}
-
 func GetFullRequestURL(baseURL string, requestURL string, channelType int) string {
 	fullRequestURL := fmt.Sprintf("%s%s", baseURL, requestURL)
 
@@ -181,7 +169,7 @@ func validateMultipartTaskRequest(c *gin.Context, info *RelayInfo, action string
 		Mode:     formData.Get("mode"),
 		Image:    formData.Get("image"),
 		Size:     formData.Get("size"),
-		Metadata: make(map[string]interface{}),
+		Metadata: make(map[string]any),
 	}
 
 	if durationStr := formData.Get("seconds"); durationStr != "" {
@@ -250,9 +238,9 @@ func ValidateMultipartDirect(c *gin.Context, info *RelayInfo) *dto.TaskError {
 		return taskErr
 	}
 
-	action := constant.TaskActionTextGenerate
+	action := constant.TaskActionTextToVideo
 	if hasInputReference {
-		action = constant.TaskActionGenerate
+		action = constant.TaskActionImageToVideo
 	}
 	if strings.HasPrefix(model, "sora-2") {
 

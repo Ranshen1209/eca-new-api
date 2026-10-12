@@ -102,12 +102,7 @@ For commercial licensing, please contact support@quantumnous.com
 
 [data-brand='eca'] h1 span.bg-clip-text,
 [data-brand='eca'] h2 span.bg-clip-text {
-  background-image: linear-gradient(
-    to right,
-    #01a568,
-    #007a4d,
-    #ffd400
-  );
+  background-image: linear-gradient(to right, #01a568, #007a4d, #ffd400);
 }
 
 [data-brand='eca'] section.relative.z-10 h1,

@@ -41,7 +41,7 @@ export function EcaAboutPage(props: EcaAboutPageProps) {
         className='relative z-10 flex min-h-svh flex-1 flex-col items-center justify-center px-4 pt-24 pb-10 sm:px-8 sm:pb-16 lg:px-12'
       >
         <article className='border-border/60 bg-card/90 w-full max-w-5xl overflow-hidden rounded-3xl border shadow-sm'>
-          <header className='flex items-start gap-5 bg-gradient-to-br from-primary/12 via-background to-background px-6 py-8 sm:gap-6 sm:px-10 sm:py-10 lg:px-12 lg:py-12'>
+          <header className='from-primary/12 via-background to-background flex items-start gap-5 bg-gradient-to-br px-6 py-8 sm:gap-6 sm:px-10 sm:py-10 lg:px-12 lg:py-12'>
             <img
               src={ECA_MARK_HREF}
               alt=''
