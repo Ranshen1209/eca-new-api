@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "rsbuild dev",
-    "build": "rsbuild build && node scripts/verify-favicon.mjs",
+    "build": "rsbuild build && bun scripts/verify-favicon.mjs",
     "build:check": "tsgo -b && bun run build",
     "typecheck": "tsgo -b",
     "lint": "oxlint -c .oxlintrc.json .",
