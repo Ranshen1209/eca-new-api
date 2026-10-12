@@ -36,8 +36,8 @@ jobs:
       - name: Check changed frontend files
         run: |
           bun run typecheck
-          bunx --no-install oxlint -c .oxlintrc.json rsbuild.config.ts scripts/verify-favicon.mjs
-          bunx --no-install oxfmt -c .oxfmtrc.json --check rsbuild.config.ts scripts/verify-favicon.mjs package.json
+          bunx --no-install oxlint -c .oxlintrc.json rsbuild.config.ts scripts/verify-favicon.mjs src/branding/eca/__tests__/defaults.test.ts
+          bunx --no-install oxfmt -c .oxfmtrc.json --check rsbuild.config.ts scripts/verify-favicon.mjs src/branding/eca/__tests__/defaults.test.ts package.json index.html
 
       - name: Build and verify the emitted favicon
         run: bun run build

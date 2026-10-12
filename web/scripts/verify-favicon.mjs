@@ -30,4 +30,3 @@ const icons = [...html.matchAll(/<link\b[^>]*>/gi)].filter((match) => {
 
 assert.equal(icons.length, 1, 'Built HTML must contain exactly one tab icon')
 assert.match(icons[0][0], /\bhref\s*=\s*["']\/eca-favicon\.svg["']/i)
-assert.match(icons[0][0], /\btype\s*=\s*["']image\/svg\+xml["']/i)

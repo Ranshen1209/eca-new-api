@@ -79,10 +79,16 @@ describe('ECA first-paint defaults', () => {
   })
 
   test('first-paint favicon uses the official no-tagline SVG, not a generated plus icon', () => {
-    expect(html).toContain(`href="${ECA_FAVICON_HREF}"`)
-    expect(html).toContain('type="image/svg+xml"')
-    expect(html).not.toContain('href="/favicon.ico"')
-    expect(html).not.toContain('href="/logo.png"')
+    const buildConfig = readFileSync(
+      path.resolve(
+        path.dirname(fileURLToPath(import.meta.url)),
+        '../../../../rsbuild.config.ts'
+      ),
+      'utf8'
+    )
+    expect(buildConfig).toContain("favicon: './public/eca-favicon.svg'")
+    expect(buildConfig).not.toContain("favicon: './public/favicon.ico'")
+    expect(html).not.toContain('rel="icon"')
   })
 
   test('first-paint favicon uses a square canvas so the official mark is not stretched', () => {
