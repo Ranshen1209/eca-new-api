@@ -40,6 +40,7 @@ var responsesWSTestUserSequence atomic.Int64
 
 func setupResponsesWSRequestTest(t *testing.T) (*model.User, *model.Token) {
 	t.Helper()
+	require.NoError(t, i18n.Init())
 	previousDB := model.DB
 	previousLogDB := model.LOG_DB
 	previousType := common.MainDatabaseType()
@@ -525,6 +526,114 @@ func assertResponsesWSAccounting(t *testing.T, fixture *responsesWSBillingTest, 
 	assert.Equal(t, charged, fixture.token.UsedQuota)
 	assert.Equal(t, 100000-charged, fixture.user.Quota)
 	assert.Equal(t, charged, fixture.user.UsedQuota)
+}
+
+func TestResponsesWebSocketModelSwitch(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		upstreamModel string
+		rejection     string
+		status        int
+	}{
+		{name: "different upstream model", upstreamModel: "gpt-4.1"},
+		{name: "alias of same upstream model", upstreamModel: "gpt-4o"},
+		{name: "token model denied", rejection: "model", status: http.StatusForbidden},
+		{name: "channel model denied", rejection: "channel", status: http.StatusForbidden},
+		{name: "expired token", rejection: "expired", status: http.StatusUnauthorized},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			received := make(chan map[string]any, 3)
+			fixture := newResponsesWSBillingTest(t, `tier("base", p * 1)`, func(ws *websocket.Conn, r *http.Request) {
+				assert.Equal(t, "Bearer upstream-first", r.Header.Get("Authorization"))
+				for index := 1; ; index++ {
+					_, data, err := ws.ReadMessage()
+					if err != nil {
+						return
+					}
+					var request map[string]any
+					if !assert.NoError(t, common.Unmarshal(data, &request)) {
+						return
+					}
+					received <- request
+					terminal := fmt.Sprintf(`{"type":"response.completed","stream_id":"planner","response":{"id":"switch_%d","status":"completed","usage":{"input_tokens":1000,"output_tokens":10,"total_tokens":1010}}}`, index)
+					if !assert.NoError(t, ws.WriteMessage(websocket.TextMessage, []byte(terminal))) {
+						return
+					}
+				}
+			})
+			require.NoError(t, config.GlobalConfig.LoadFromDB(map[string]string{
+				"billing_setting.billing_mode": `{"ws-billing":"tiered_expr","ws-switch":"tiered_expr"}`,
+				"billing_setting.billing_expr": `{"ws-billing":"tier(\"base\", p * 1)","ws-switch":"tier(\"base\", p * 2)"}`,
+			}))
+			mappedModel := tc.upstreamModel
+			if mappedModel == "" {
+				mappedModel = "gpt-4.1"
+			}
+			mapping, err := common.Marshal(map[string]string{"ws-billing": "gpt-4o", "ws-switch": mappedModel})
+			require.NoError(t, err)
+			require.NoError(t, model.DB.Model(fixture.channel).Updates(map[string]any{
+				"models": "ws-billing,ws-switch", "model_mapping": string(mapping),
+			}).Error)
+			if tc.rejection != "channel" {
+				require.NoError(t, model.DB.Create(&model.Ability{ChannelId: fixture.channel.Id, Model: "ws-switch", Group: "default", Enabled: true}).Error)
+			}
+
+			quotas := []int{}
+			models := []string{"ws-billing", "ws-switch", "ws-billing"}
+			for index, modelName := range models {
+				if index == 1 {
+					require.NoError(t, model.DB.First(fixture.token, fixture.token.Id).Error)
+					switch tc.rejection {
+					case "model":
+						fixture.token.ModelLimitsEnabled, fixture.token.ModelLimits = true, "ws-billing"
+						require.NoError(t, fixture.token.Update())
+					case "expired":
+						fixture.token.ExpiredTime = time.Now().Add(-time.Minute).Unix()
+						require.NoError(t, fixture.token.Update())
+					}
+				}
+				request := map[string]any{"type": "response.create", "stream_id": "planner", "event_id": fmt.Sprintf("turn_%d", index), "model": modelName, "input": "hello"}
+				if index > 0 {
+					request["previous_response_id"] = fmt.Sprintf("switch_%d", index)
+				}
+				payload, err := common.Marshal(request)
+				require.NoError(t, err)
+				require.NoError(t, fixture.client.WriteMessage(websocket.TextMessage, payload))
+				event := readResponsesWSTestEvent(t, fixture.client)
+				if index == 1 && tc.rejection != "" {
+					assert.Equal(t, "error", event["type"])
+					assert.Equal(t, float64(tc.status), event["status"])
+					assert.Equal(t, "planner", event["stream_id"])
+					assert.Equal(t, "turn_1", event["event_id"])
+					assert.Empty(t, received, "rejected model switch must not reach upstream")
+					break
+				}
+				require.Equal(t, "response.completed", event["type"], "unexpected response: %v", event)
+				assert.Equal(t, "planner", event["stream_id"])
+				response, ok := event["response"].(map[string]any)
+				require.True(t, ok)
+				assert.Equal(t, fmt.Sprintf("switch_%d", index+1), response["id"])
+				observed := <-received
+				wantModel, quota := "gpt-4o", 500
+				if modelName == "ws-switch" {
+					wantModel, quota = mappedModel, 1000
+				}
+				assert.Equal(t, wantModel, observed["model"])
+				assert.Equal(t, "planner", observed["stream_id"])
+				assert.Equal(t, request["previous_response_id"], observed["previous_response_id"])
+				quotas = append(quotas, quota)
+			}
+			fixture.closeAndWait(t)
+			assert.Equal(t, int32(1), fixture.connections.Load(), "model switching must preserve the upstream connection and its context")
+			assertResponsesWSAccounting(t, fixture, quotas)
+			var logs []model.Log
+			require.NoError(t, model.LOG_DB.Where("type = ?", model.LogTypeConsume).Order("id").Find(&logs).Error)
+			for index, log := range logs {
+				assert.Equal(t, models[index], log.ModelName, "each turn must retain its own billing model")
+				assert.Equal(t, fmt.Sprintf("responses-ws-billing-ws-%d", index), log.RequestId)
+			}
+		})
+	}
 }
 
 func TestResponsesWebSocketReusesConnectionAndSettlesEachRequest(t *testing.T) {

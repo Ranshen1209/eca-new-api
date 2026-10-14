@@ -110,7 +110,6 @@ type responsesWSSession struct {
 	// These fields belong to the serial request worker and describe the actual
 	// established connection. Per-request token/user data is never stored here.
 	lastResponseID  string
-	lockedModel     string
 	lockedChannelID int
 	lockedGroup     string
 	lockedKey       string
@@ -256,9 +255,6 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 	if modelName == "" {
 		return newResponsesWSInvalidRequestError(errors.New("model is required"))
 	}
-	if s.lockedModel != "" && modelName != s.lockedModel {
-		return newResponsesWSInvalidRequestError(fmt.Errorf("responses websocket connection is locked to model %q", s.lockedModel))
-	}
 	if apiErr = checkResponsesWSModelAccess(c, modelName); apiErr != nil {
 		return apiErr
 	}
@@ -267,6 +263,9 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 	service.GetChannelConstraints(c).AddFilter(appdto.ChannelFilter{Kind: appdto.FilterRequestPath, RequestPath: c.Request.URL.Path})
 
 	if s.lockedChannelID != 0 {
+		// Models are selected per request. Reuse the connection only after
+		// checking access to the requested model and its upstream route, then
+		// create a fresh relay/billing context for this turn.
 		if apiErr = s.restoreConnectionContext(c, modelName); apiErr != nil {
 			return apiErr
 		}
@@ -338,7 +337,7 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 				state.closeCode = websocket.CloseInternalServerErr
 				return types.NewError(err, types.ErrorCodeBadResponse, types.ErrOptionWithSkipRetry())
 			}
-			s.lockedModel, s.lockedChannelID, s.lockedGroup = modelName, channel.Id, info.UsingGroup
+			s.lockedChannelID, s.lockedGroup = channel.Id, info.UsingGroup
 			s.lockedKey, s.lockedKeyIndex = info.ApiKey, info.ChannelMultiKeyIndex
 			s.lockedRoute, _ = channel.GetOtherSettings().AdvancedCustom.MatchPathForModel(c.Request.URL.Path, modelName)
 			s.lockedContext = make(map[appconstant.ContextKey]any)
