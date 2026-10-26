@@ -62,6 +62,30 @@ New API is a self-hosted AI gateway for applications, agents, and teams. Connect
 
 Use it to share authorized model access across a team, switch providers without configuring every client again, or operate a private multi-model service with a web console. Upstreams include OpenAI, Anthropic, Google Gemini, Azure OpenAI, AWS Bedrock, Vertex AI, DeepSeek, Qwen, and other compatible services.
 
+### ECA Responses WebSocket compatibility
+
+Responses WebSocket channels require `responses_websocket_enabled: true` in
+their channel settings; an absent setting remains disabled. Each `response.create`
+rechecks the token, model permission and channel route and owns its billing state.
+Models may change on the same connection when those checks preserve its upstream
+route and credential.
+
+The gateway forwards `response.interrupt` unchanged, including `response_id`,
+`mode` and extension fields. It requires a non-empty string response ID matching
+the active response and, when provided, the active stream ID. Interrupts received
+before upstream acceptance wait for that response. Late interrupts for the last
+128 finished response IDs on this connection are harmless; unknown IDs receive a
+request error without cancelling another response. Interruption does not create
+a separate billed request, and the upstream terminal event settles the current
+turn before the next one is admitted. `response.cancel` keeps its existing behavior.
+
+Run the local mock regressions with
+`go test -p 1 -count=1 -timeout 3m ./controller ./relay -run 'Responses|RestoreConnectionContext'`.
+These tests use local upstream fixtures and do not require model credentials.
+The publishing workflow also checks ECA branding and SQLite/MySQL/PostgreSQL
+compatibility. Use the Go version in `go.mod` and Bun 1.4.4 or newer for the
+current frontend checker.
+
 ### ECA internal automatic allowance
 
 The ECA fork can grant an internal allowance to enabled, non-deleted users every
@@ -321,7 +345,7 @@ Open [http://localhost:5173](http://localhost:5173); the development server prox
 | `web/` | Web console; see [frontend conventions](./web/AGENTS.md) |
 | [electron/](./electron/README.md) | Desktop wrapper and packaging |
 
-Read [AGENTS.md](./AGENTS.md) before contributing. Run checks appropriate to your change, including `make test` for the Go modules and `bun run typecheck`, `bun run lint`, `bun run test`, and `bun run build` in `web/` for frontend changes. Changes to RelayKit must also pass `GOWORK=off go build ./...` from `relaykit/`.
+Read [AGENTS.md](./AGENTS.md) before contributing. Run checks appropriate to your change, including `make test` for the Go modules and `bun check -b`, `bun run lint`, `bun run test`, and `bun run build` in `web/` for frontend changes. Changes to RelayKit must also pass `GOWORK=off go build ./...` from `relaykit/`.
 
 <a id="documentation"></a>
 

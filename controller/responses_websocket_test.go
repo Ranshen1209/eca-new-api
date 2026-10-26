@@ -1329,6 +1329,92 @@ func TestResponsesWebSocketCloseCodes(t *testing.T) {
 	}
 }
 
+// Interrupts preserve the upstream protocol and do not create another billed turn.
+func TestResponsesWebSocketInterruptPreservesControlAndReusesConnection(t *testing.T) {
+	for _, beforeCreated := range []bool{false, true} {
+		t.Run(fmt.Sprintf("before_created=%t", beforeCreated), func(t *testing.T) {
+			createSeen := make(chan struct{})
+			releaseCreated := make(chan struct{})
+			var releaseOnce sync.Once
+			release := func() { releaseOnce.Do(func() { close(releaseCreated) }) }
+			interrupt := `{"type":"response.interrupt","event_id":"stop-first","response_id":"first","stream_id":"planner","mode":"discard_partial_items","extension":{"keep":true}}`
+			secondInterrupt := `{"type":"response.interrupt","event_id":"stop-second","response_id":"second","stream_id":"planner","mode":"discard_partial_items"}`
+			fixture := newResponsesWSBillingTest(t, `tier("request", fixed(0.002))`, func(ws *websocket.Conn, _ *http.Request) {
+				for index, responseID := range []string{"first", "second"} {
+					_, data, err := ws.ReadMessage()
+					if !assert.NoError(t, err) || !assert.Contains(t, string(data), `"type":"response.create"`) {
+						return
+					}
+					if index == 0 {
+						close(createSeen)
+						<-releaseCreated
+					}
+					created := fmt.Sprintf(`{"type":"response.created","stream_id":"planner","response":{"id":%q,"status":"in_progress"}}`, responseID)
+					if !assert.NoError(t, ws.WriteMessage(websocket.TextMessage, []byte(created))) {
+						return
+					}
+					_, data, err = ws.ReadMessage()
+					expected := interrupt
+					if index == 1 {
+						expected = secondInterrupt
+					}
+					if !assert.NoError(t, err) || !assert.Equal(t, expected, string(data), "control frames must reach upstream unchanged") {
+						return
+					}
+					terminal := fmt.Sprintf(`{"type":"response.incomplete","stream_id":"planner","response":{"id":%q,"status":"incomplete","incomplete_details":{"reason":"interrupted"},"usage":{"input_tokens":1000,"output_tokens":0,"total_tokens":1000}}}`, responseID)
+					if !assert.NoError(t, ws.WriteMessage(websocket.TextMessage, []byte(terminal))) {
+						return
+					}
+				}
+				_, _, _ = ws.ReadMessage()
+			})
+			defer release()
+			create := `{"type":"response.create","stream_id":"planner","model":"ws-billing","input":"hello"}`
+			require.NoError(t, fixture.client.WriteMessage(websocket.TextMessage, []byte(create)))
+			select {
+			case <-createSeen:
+			case <-time.After(3 * time.Second):
+				t.Fatal("upstream did not receive create")
+			}
+			if beforeCreated {
+				require.NoError(t, fixture.client.WriteMessage(websocket.TextMessage, []byte(interrupt)))
+			}
+			release()
+			assert.Equal(t, "response.created", readResponsesWSTestEvent(t, fixture.client)["type"])
+			if !beforeCreated {
+				require.NoError(t, fixture.client.WriteMessage(websocket.TextMessage, []byte(interrupt)))
+			}
+			assert.Equal(t, "response.incomplete", readResponsesWSTestEvent(t, fixture.client)["type"])
+			// A late interrupt is harmless both while idle and during the next turn.
+			require.NoError(t, fixture.client.WriteMessage(websocket.TextMessage, []byte(interrupt)))
+			require.NoError(t, fixture.client.WriteMessage(websocket.TextMessage, []byte(create)))
+			assert.Equal(t, "response.created", readResponsesWSTestEvent(t, fixture.client)["type"])
+			require.NoError(t, fixture.client.WriteMessage(websocket.TextMessage, []byte(interrupt)))
+			for _, invalid := range []string{
+				`{"type":"response.interrupt","event_id":"bad"}`,
+				`{"type":"response.interrupt","event_id":"bad","response_id":42}`,
+				`{"type":"response.interrupt","event_id":"bad","response_id":" "}`,
+				`{"type":"response.interrupt","event_id":"bad","response_id":"unknown"}`,
+				`{"type":"response.interrupt","event_id":"bad","response_id":"second","stream_id":"other"}`,
+				`{"type":"session.interrupt","event_id":"bad","response_id":"second"}`,
+			} {
+				require.NoError(t, fixture.client.WriteMessage(websocket.TextMessage, []byte(invalid)))
+				rejected := readResponsesWSTestEvent(t, fixture.client)
+				assert.Equal(t, "error", rejected["type"])
+				assert.Equal(t, float64(http.StatusBadRequest), rejected["status"])
+				assert.Equal(t, "bad", rejected["event_id"])
+			}
+			require.NoError(t, fixture.client.WriteMessage(websocket.TextMessage, []byte(secondInterrupt)))
+			assert.Equal(t, "response.incomplete", readResponsesWSTestEvent(t, fixture.client)["type"])
+			require.NoError(t, fixture.client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.interrupt","response_id":"unknown"}`)))
+			assert.Equal(t, "error", readResponsesWSTestEvent(t, fixture.client)["type"])
+			fixture.closeAndWait(t)
+			assert.Equal(t, int32(1), fixture.connections.Load())
+			assertResponsesWSAccounting(t, fixture, []int{1000, 1000})
+		})
+	}
+}
+
 // A control event queued while another is still outstanding is rejected
 // locally instead of reaching upstream twice.
 func TestResponsesWebSocketRejectsSecondControlWhileOnePending(t *testing.T) {

@@ -69,20 +69,22 @@ type responsesWSMessage struct {
 	err  error
 }
 
-// responsesWSControl is a client control event (response.cancel) whose
+// responsesWSControl is a client control event (response.cancel or response.interrupt) whose
 // envelope the read loop already parsed.
 type responsesWSControl struct {
 	body              []byte
 	eventID, streamID string
+	responseID        string // Required for response.interrupt; cancel keeps its upstream semantics.
 }
 
 // Only the request worker reads or changes billing state. Socket readers pass
 // bounded messages to it; cancellation never performs an independent refund.
 type responsesWSCallState struct {
-	inbox    chan responsesWSMessage
-	controls chan responsesWSControl
-	done     chan struct{}
-	terminal *responsesWSMessage
+	inbox      chan responsesWSMessage
+	controls   chan responsesWSControl
+	done       chan struct{}
+	terminal   *responsesWSMessage
+	responseID string
 	// A nonzero closeCode ends the connection after this request.
 	closeCode   int
 	closeReason string
@@ -106,6 +108,12 @@ type responsesWSSession struct {
 	unregister    func()
 	stateMu       sync.Mutex
 	current       *responsesWSCallState
+	// Protected by stateMu. Late interrupts are idempotent and must not occupy
+	// the next request's control slot; bound history for long-lived sockets.
+	finishedResponseIDs []string
+
+	// clientWriteBudget is guarded by clientWriteMu.
+	clientWriteBudget helper.StreamWriteBudget
 
 	// These fields belong to the serial request worker and describe the actual
 	// established connection. Per-request token/user data is never stored here.
@@ -151,13 +159,34 @@ func ResponsesWebSocketHelper(c *gin.Context, client *websocket.Conn, runner Res
 		if eventType != responsesWSEventTypeResponseCreate {
 			// Controls are owned by the active request too. In particular a cancel
 			// arriving during authentication must not precede its upstream create.
-			state := s.getCurrent()
-			if eventType != "response.cancel" || state == nil {
+			if eventType != "response.cancel" && eventType != "response.interrupt" {
 				s.sendError(envelope.EventID, streamID, newResponsesWSInvalidRequestError(fmt.Errorf("unsupported websocket event %q", eventType)))
 				continue
 			}
+			control := responsesWSControl{body: message, eventID: envelope.EventID, streamID: streamID}
+			if eventType == "response.interrupt" {
+				var interrupt struct {
+					ResponseID string `json:"response_id"`
+				}
+				if err := common.Unmarshal(message, &interrupt); err != nil || strings.TrimSpace(interrupt.ResponseID) == "" {
+					s.sendError(envelope.EventID, streamID, newResponsesWSInvalidRequestError(errors.New("response.interrupt requires a non-empty string response_id")))
+					continue
+				}
+				control.responseID = interrupt.ResponseID
+			}
+			s.stateMu.Lock()
+			state := s.current
+			finished := control.responseID != "" && slices.Contains(s.finishedResponseIDs, control.responseID)
+			s.stateMu.Unlock()
+			if finished {
+				continue
+			}
+			if state == nil {
+				s.sendError(envelope.EventID, streamID, newResponsesWSInvalidRequestError(errors.New("no active response for websocket control event")))
+				continue
+			}
 			select {
-			case state.controls <- responsesWSControl{body: message, eventID: envelope.EventID, streamID: streamID}:
+			case state.controls <- control:
 			case <-state.done:
 			case <-s.ctx.Done():
 				return nil
@@ -180,6 +209,7 @@ func ResponsesWebSocketHelper(c *gin.Context, client *websocket.Conn, runner Res
 func (s *responsesWSSession) runRequest(state *responsesWSCallState, message []byte, envelope responsesWSCreateEvent, streamID string, requestID string) {
 	create, parseErr := normalizeResponsesWSCreateEvent(message, envelope, streamID)
 	var apiErr *types.NewAPIError
+	var upstreamURLs []string
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			apiErr = types.NewError(fmt.Errorf("responses websocket request panic: %v", recovered), types.ErrorCodeBadResponse, types.ErrOptionWithSkipRetry())
@@ -192,14 +222,21 @@ func (s *responsesWSSession) runRequest(state *responsesWSCallState, message []b
 		// as a normal closure; shutdown itself takes neither lock.
 		outgoing := state.terminal
 		if apiErr != nil {
-			if body, err := buildResponsesWSErrorPayload(envelope.EventID, streamID, apiErr); err == nil {
+			if body, err := buildResponsesWSErrorPayload(envelope.EventID, streamID, apiErr, upstreamURLs...); err == nil {
 				outgoing = &responsesWSMessage{kind: websocket.TextMessage, body: body}
 			}
 		}
 		s.clientWriteMu.Lock()
 		s.stateMu.Lock()
+		if state.responseID != "" {
+			const maxFinishedResponses = 128
+			if len(s.finishedResponseIDs) == maxFinishedResponses {
+				s.finishedResponseIDs = append(s.finishedResponseIDs[:0], s.finishedResponseIDs[1:]...)
+			}
+			s.finishedResponseIDs = append(s.finishedResponseIDs, state.responseID)
+		}
 		if outgoing != nil {
-			if err := s.client.SetWriteDeadline(time.Now().Add(responsesWSWriteTimeout)); err != nil {
+			if err := s.client.SetWriteDeadline(s.clientWriteBudget.Deadline(time.Now(), len(outgoing.body))); err != nil {
 				state.closeCode = websocket.CloseInternalServerErr
 			} else if err := s.client.WriteMessage(outgoing.kind, outgoing.body); err != nil {
 				state.closeCode = websocket.CloseInternalServerErr
@@ -223,7 +260,9 @@ func (s *responsesWSSession) runRequest(state *responsesWSCallState, message []b
 		}
 		c.Request.Body = io.NopCloser(bytes.NewReader(create.Body))
 		c.Request.ContentLength = int64(len(create.Body))
-		return s.runCall(c, state, create)
+		callErr := s.runCall(c, state, create)
+		upstreamURLs = common.UpstreamAddresses(c)
+		return callErr
 	})
 	if apiErr != nil && (apiErr.StatusCode == http.StatusUnauthorized || apiErr.StatusCode == http.StatusForbidden) {
 		state.closeCode = websocket.ClosePolicyViolation
@@ -347,6 +386,7 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 				appconstant.ContextKeyChannelParamOverride, appconstant.ContextKeyChannelHeaderOverride, appconstant.ContextKeyChannelOrganization,
 				appconstant.ContextKeyChannelAutoBan, appconstant.ContextKeyChannelModelMapping, appconstant.ContextKeyChannelStatusCodeMapping,
 				appconstant.ContextKeyChannelIsMultiKey, appconstant.ContextKeyChannelMultiKeyIndex, appconstant.ContextKeyChannelKey, appconstant.ContextKeyChannelBaseUrl,
+				appconstant.ContextKeyUpstreamRequestOrigin,
 			} {
 				if value, ok := c.Get(string(key)); ok {
 					s.lockedContext[key] = value
@@ -373,7 +413,7 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 	idle := time.NewTimer(timeout)
 	defer idle.Stop()
 	accepted := false
-	var pendingControl []byte
+	var pendingControl *responsesWSControl
 	var sentControl []byte
 	var responseID string
 	for {
@@ -459,6 +499,7 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 					accepted = true
 					if event.Response != nil && event.Response.ID != "" {
 						responseID = event.Response.ID
+						state.responseID = responseID
 					}
 				}
 				accumulator.Observe(&event.ResponsesStreamResponse, incoming.body)
@@ -477,19 +518,28 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 				s.shutdown(websocket.CloseInternalServerErr, "")
 			}
 			if accepted && pendingControl != nil {
-				if err := s.writeTarget(websocket.TextMessage, pendingControl); err != nil {
+				if pendingControl.responseID != "" && pendingControl.responseID != responseID {
+					s.sendError(pendingControl.eventID, pendingControl.streamID, newResponsesWSInvalidRequestError(errors.New("response.interrupt does not match the active response")))
+					pendingControl = nil
+					continue
+				}
+				if err := s.writeTarget(websocket.TextMessage, pendingControl.body); err != nil {
 					s.shutdown(websocket.CloseInternalServerErr, "")
 				}
-				sentControl = pendingControl
+				sentControl = pendingControl.body
 				pendingControl = nil
 			}
 		case control := <-state.controls:
+			if control.responseID != "" && ((control.streamID != "" && control.streamID != create.StreamID) || (accepted && control.responseID != responseID)) {
+				s.sendError(control.eventID, control.streamID, newResponsesWSInvalidRequestError(errors.New("response.interrupt does not match the active response")))
+				continue
+			}
 			if pendingControl != nil || sentControl != nil {
 				s.sendError(control.eventID, control.streamID, newResponsesWSInvalidRequestError(errors.New("a response control event is already pending")))
 				continue
 			}
 			if !accepted {
-				pendingControl = control.body
+				pendingControl = &control
 				continue
 			}
 			if err := s.writeTarget(websocket.TextMessage, control.body); err != nil {
@@ -712,7 +762,7 @@ func (s *responsesWSSession) writeTarget(kind int, message []byte) error {
 func (s *responsesWSSession) writeClient(kind int, message []byte) error {
 	s.clientWriteMu.Lock()
 	defer s.clientWriteMu.Unlock()
-	if err := s.client.SetWriteDeadline(time.Now().Add(responsesWSWriteTimeout)); err != nil {
+	if err := s.client.SetWriteDeadline(s.clientWriteBudget.Deadline(time.Now(), len(message))); err != nil {
 		return err
 	}
 	return s.client.WriteMessage(kind, message)
@@ -879,7 +929,7 @@ func buildResponsesWSCreateEvent(jsonData []byte, generate common.RawMessage, st
 	return common.Marshal(event)
 }
 
-func buildResponsesWSErrorPayload(eventID, streamID string, apiErr *types.NewAPIError) ([]byte, error) {
+func buildResponsesWSErrorPayload(eventID, streamID string, apiErr *types.NewAPIError, upstreamURLs ...string) ([]byte, error) {
 	if apiErr == nil {
 		return nil, errors.New("api error is nil")
 	}
@@ -887,7 +937,7 @@ func buildResponsesWSErrorPayload(eventID, streamID string, apiErr *types.NewAPI
 	if status == 0 {
 		status = http.StatusInternalServerError
 	}
-	openaiErr := apiErr.ToOpenAIError()
+	openaiErr := apiErr.ToOpenAIError(upstreamURLs...)
 	return common.Marshal(&responsesWSErrorEvent{
 		Type:     "error",
 		Status:   status,
