@@ -58,7 +58,7 @@
 
 ## OIDC account management
 
-OIDC-linked accounts use the identity provider for sign-in details and security. See [authentication](docs/authentication.md#oidc-主身份只读) for the protected endpoints, operational account exception, and local verification. This source candidate requires integration with the deployed authentication baseline before release.
+OIDC-linked accounts use the identity provider for sign-in details and security. See [authentication](docs/authentication.md#oidc-主身份只读) for the protected endpoints, operational account exception, and local verification. The change was integrated with the existing production authentication and streaming baseline and released with explicit authorization on 2026-11-12; normal SSO, employee pages, and the administrator editing form were checked.
 
 ## 📝 Project Description
 
