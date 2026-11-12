@@ -112,6 +112,9 @@ export function UsersMutateDrawer({
 }: UsersMutateDrawerProps) {
   const { t } = useTranslation()
   const isUpdate = !!currentRow
+  const [identityManaged, setIdentityManaged] = useState(
+    Boolean(currentRow?.oidc_id)
+  )
   const { triggerRefresh, requestVerification } = useUsers()
   const currentUser = useAuthStore((s) => s.auth.user)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -148,6 +151,7 @@ export function UsersMutateDrawer({
       getUser(currentRow.id)
         .then((result) => {
           if (result.success && result.data) {
+            setIdentityManaged(Boolean(result.data.oidc_id))
             loadedPermissions.current = result.data.admin_permissions
             form.reset(transformUserToFormDefaults(result.data))
           } else {
@@ -156,6 +160,7 @@ export function UsersMutateDrawer({
         })
         .catch((error) => handleServerError(error, t('Failed to load')))
     } else if (open && !isUpdate) {
+      setIdentityManaged(false)
       // For create, reset to defaults
       form.reset(USER_FORM_DEFAULT_VALUES)
     }
@@ -307,6 +312,13 @@ export function UsersMutateDrawer({
                 <h3 className='text-sm font-medium'>
                   {t('Basic Information')}
                 </h3>
+                {identityManaged && (
+                  <p className='text-muted-foreground text-sm' role='note'>
+                    {t(
+                      'This account is managed by your identity provider. Manage your sign-in details and security in the identity center.'
+                    )}
+                  </p>
+                )}
 
                 <FormField
                   control={form.control}
@@ -387,27 +399,29 @@ export function UsersMutateDrawer({
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name='password'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('Password')}</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type='password'
-                          placeholder={
-                            isUpdate
-                              ? t('Leave empty to keep unchanged')
-                              : t('Enter password (8–128 characters)')
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {!identityManaged && (
+                  <FormField
+                    control={form.control}
+                    name='password'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('Password')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type='password'
+                            placeholder={
+                              isUpdate
+                                ? t('Leave empty to keep unchanged')
+                                : t('Enter password (8–128 characters)')
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </SideDrawerSection>
 
               {/* Group & Quota Settings (Update only) */}

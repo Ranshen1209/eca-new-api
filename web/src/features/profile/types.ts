@@ -80,6 +80,7 @@ export interface UserProfile {
   /** Discord ID (OAuth) */
   discord_id?: string
   /** OIDC ID (OAuth) */
+  identity_managed?: boolean
   oidc_id?: string
   /** Telegram ID (OAuth) */
   telegram_id?: string

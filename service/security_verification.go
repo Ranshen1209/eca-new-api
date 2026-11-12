@@ -311,6 +311,20 @@ type VerificationRequirements struct {
 // securityVerificationPolicy is the only operation-to-method policy. Device
 // support and disabled providers never turn an enrolled factor into an absent one.
 func securityVerificationPolicy(scope string, state model.UserVerificationState) ([]VerificationMethodOption, error) {
+	if state.IdentityManaged {
+		switch scope {
+		case VerificationScopePasswordSet, VerificationScopePasswordChange, VerificationScopeAccountBind, VerificationScopeAccountUnbind, VerificationScopeAccountDelete, VerificationScopePasskeyRegister, VerificationScopePasskeyDelete, VerificationScopeTwoFASetup, VerificationScopeTwoFADisable, VerificationScopeTwoFABackupCodes:
+			return nil, model.ErrIdentityManaged
+		case VerificationScopeLogin:
+			return nil, nil
+		}
+		switch scope {
+		case VerificationScopeChannelKeyRead, VerificationScopeAccessTokenGenerate, VerificationScopeAccessTokenUpdate, VerificationScopeAccessTokenRevoke, VerificationScopeAdminUserCreate, VerificationScopeAdminUserUpdate, VerificationScopeAdminUserDelete, VerificationScopeAdminUserManage, VerificationScopeAdminUserPasskeyReset, VerificationScopeAdminUserTwoFADisable, VerificationScopeAdminUserBindingClear:
+			return []VerificationMethodOption{{Method: VerificationMethodOAuth, Available: true}}, nil
+		default:
+			return nil, ErrProofScope
+		}
+	}
 	var methods []string
 	if state.HasTwoFA {
 		methods = append(methods, VerificationMethodTwoFA)
@@ -405,7 +419,7 @@ func GetVerificationRequirements(identity AuthIdentity, scope string) (*Verifica
 		// OAuth verification completes through a browser popup bound to a login
 		// session, which an access token cannot provide.
 		if _, ok := model.ParseAccessTokenSessionID(identity.SessionID); ok {
-			methods[i].Available, methods[i].Reason = false, "OAuth verification requires a browser sign-in. Enable two-factor authentication or a Passkey to continue."
+			methods[i].Available, methods[i].Reason = false, "OAuth verification requires a browser sign-in. Continue in the browser to verify your identity."
 			continue
 		}
 		user, err := model.GetUserById(identity.UserID, false)
@@ -441,7 +455,7 @@ func verificationOAuthProviders(user *model.User) ([]VerificationOAuthProvider, 
 	}
 	providers := []VerificationOAuthProvider{}
 	for slug, provider := range oauth.GetAllProviders() {
-		if !provider.IsEnabled() {
+		if !provider.IsEnabled() || user.IdentityManaged() && slug != "oidc" {
 			continue
 		}
 		var userID string

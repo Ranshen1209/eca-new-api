@@ -162,12 +162,12 @@ afterEach(() => {
 })
 
 describe('UserBindingDialog built-in bindings', () => {
-  test('submits every built-in provider type accepted by the backend', async () => {
+  test('submits built-in provider types for an unbound operational account', async () => {
     const deletedUrls: string[] = []
     apiClient.get = async (url) => {
       switch (url) {
         case '/api/user/7':
-          return { data: { success: true, data: user } }
+          return { data: { success: true, data: { ...user, oidc_id: '' } } }
         case '/api/user/7/oauth/bindings':
           return { data: { success: true, data: [] } }
         case '/api/verify/methods':
@@ -218,7 +218,6 @@ describe('UserBindingDialog built-in bindings', () => {
       ['GitHub', 'github'],
       ['Discord', 'discord'],
       ['WeChat', 'wechat'],
-      ['OIDC', 'oidc'],
       ['Telegram', 'telegram'],
       ['LinuxDO', 'linuxdo'],
     ] as const
@@ -240,6 +239,32 @@ describe('UserBindingDialog built-in bindings', () => {
 
     expect(deletedUrls).toHaveLength(expectedBindings.length)
   })
+})
+
+test('keeps OIDC bindings read-only even for administrators', async () => {
+  const removed: string[] = []
+  apiClient.get = async (url) => {
+    let data: object = []
+    if (url === '/api/user/7') {
+      data = user
+    } else if (url === '/api/status') {
+      data = { oidc_enabled: true }
+    }
+    return { data: { success: true, data } }
+  }
+  apiClient.delete = async (url) => {
+    removed.push(String(url))
+    return { data: { success: true } }
+  }
+  renderWithQueryClient(
+    <UserBindingDialog open userId={7} onOpenChange={() => undefined} />
+  )
+  await screen.findByRole('note')
+  expect(
+    screen.queryByRole('button', { name: 'Confirm Unbind' })
+  ).not.toBeInTheDocument()
+  expect(document.querySelector('svg.lucide-unlink')).toBeNull()
+  expect(removed).toEqual([])
 })
 
 describe('UserBindingDialog shared status updates', () => {

@@ -32,6 +32,7 @@ import { copyToClipboard } from '@/lib/copy-to-clipboard'
 import { handleServerError } from '@/lib/handle-server-error'
 import { AuthOperationError } from '@/lib/secure-verification'
 import { createServerError } from '@/lib/server-error-message'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { AuthLayout } from '../auth-layout'
 
@@ -47,6 +48,7 @@ export function ResetPasswordConfirm({
   token,
 }: ResetPasswordConfirmProps) {
   const { t } = useTranslation()
+  const identityManaged = useAuthStore((s) => Boolean(s.auth.user?.oidc_id))
   const navigate = useNavigate()
   const [newPassword, setNewPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -108,6 +110,16 @@ export function ResetPasswordConfirm({
       )
       setTimeout(() => setCopied(false), 2000)
     }
+  }
+
+  if (identityManaged) {
+    return (
+      <p className='text-muted-foreground text-sm' role='note'>
+        {t(
+          'This account is managed by your identity provider. Manage your sign-in details and security in the identity center.'
+        )}
+      </p>
+    )
   }
 
   return (

@@ -257,7 +257,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             setBindingDialogOpen(true)
           }}
         >
-          {t('Manage Bindings')}
+          {user.oidc_id ? t('View Bindings') : t('Manage Bindings')}
           <DropdownMenuShortcut>
             <Link2 size={16} />
           </DropdownMenuShortcut>
@@ -282,7 +282,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             event.preventDefault()
             setResetPasskeyOpen(true)
           }}
-          disabled={isRoot}
+          disabled={isRoot || Boolean(user.oidc_id)}
         >
           {t('Reset Passkey')}
           <DropdownMenuShortcut>
@@ -295,7 +295,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             event.preventDefault()
             setResetTwoFAOpen(true)
           }}
-          disabled={isRoot}
+          disabled={isRoot || Boolean(user.oidc_id)}
         >
           {t('Reset 2FA')}
           <DropdownMenuShortcut>

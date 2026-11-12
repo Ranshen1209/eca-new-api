@@ -891,6 +891,9 @@ func (user *User) EditWithTx(tx *gorm.DB, updatePassword bool) error {
 	if err = tx.First(&current, user.Id).Error; err != nil {
 		return err
 	}
+	if current.IdentityManaged() && (updatePassword || newUser.Username != current.Username) {
+		return ErrIdentityManaged
+	}
 	authChanged := (updatePassword && current.Password != newUser.Password) || current.Group != newUser.Group
 	if authChanged {
 		newUser.AuthVersion, err = IncrementUserAuthVersionWithTx(tx, user.Id)
@@ -1192,6 +1195,9 @@ func ResetUserPasswordByEmail(email string, password string) error {
 	user, err := GetUniqueUserByEmail(email)
 	if err != nil {
 		return err
+	}
+	if user.IdentityManaged() {
+		return ErrIdentityManaged
 	}
 	hashedPassword, err := common.HashAccountPassword(password)
 	if err != nil {

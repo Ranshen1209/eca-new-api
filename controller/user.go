@@ -166,6 +166,10 @@ func setupLoginAtAuthVersion(user *model.User, expectedAuthVersion int64, c *gin
 		common.ApiErrorT(c, "User has been banned")
 		return
 	}
+	if user.IdentityManaged() && loginMethodFromContext(c) != "oauth:oidc" && loginMethodFromContext(c) != "oidc" {
+		writeSecurityOperationError(c, model.ErrIdentityManaged)
+		return
+	}
 	currentUser, err := model.GetSelfUserById(user.Id)
 	if err != nil {
 		common.ApiError(c, err)
@@ -500,6 +504,7 @@ func buildSelfUserData(user *model.User) map[string]any {
 		"username":          user.Username,
 		"display_name":      user.DisplayName,
 		"has_password":      user.HasPassword,
+		"identity_managed":  user.IdentityManaged(),
 		"role":              user.Role,
 		"status":            user.Status,
 		"email":             user.Email,
@@ -680,6 +685,10 @@ func UpdateUser(c *gin.Context) {
 		common.ApiErrorT(c, "No permission to update users of same or higher permission level")
 		return
 	}
+	if originUser.IdentityManaged() && (updatedUser.Username != originUser.Username || updatedUser.Password != "" || updatedUser.Email != "" && updatedUser.Email != originUser.Email) {
+		writeSecurityOperationError(c, model.ErrIdentityManaged)
+		return
+	}
 	updatePassword := updatedUser.Password != ""
 	auditParams := map[string]any{
 		"username": originUser.Username,
@@ -751,6 +760,10 @@ func AdminClearUserBinding(c *gin.Context) {
 		return
 	}
 
+	if user.IdentityManaged() {
+		writeSecurityOperationError(c, model.ErrIdentityManaged)
+		return
+	}
 	myRole := c.GetInt("role")
 	if !canManageTargetRole(myRole, user.Role) {
 		common.ApiErrorT(c, "No permission to access users of same or higher level")
@@ -785,6 +798,19 @@ func UpdateSelf(c *gin.Context) {
 		return
 	}
 
+	currentIdentity, err := model.GetUserById(c.GetInt("id"), false)
+	if err != nil {
+		writeSecurityOperationError(c, err)
+		return
+	}
+	if currentIdentity.IdentityManaged() {
+		for key, original := range map[string]string{"username": currentIdentity.Username, "email": currentIdentity.Email, "password": "", "original_password": ""} {
+			if value, exists := requestData[key]; exists && value != original {
+				writeSecurityOperationError(c, model.ErrIdentityManaged)
+				return
+			}
+		}
+	}
 	passwordRequested := false
 	if value, exists := requestData["password"]; exists && value != nil {
 		password, isString := value.(string)
@@ -964,6 +990,9 @@ func DeleteUser(c *gin.Context) {
 }
 
 func DeleteSelf(c *gin.Context) {
+	if !requireLocalAccountManagement(c, c.GetInt("id")) {
+		return
+	}
 	setAuthNoStore(c)
 	succeeded := false
 	var revokedAccessTokens int64

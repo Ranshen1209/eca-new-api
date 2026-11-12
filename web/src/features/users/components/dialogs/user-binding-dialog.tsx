@@ -394,6 +394,13 @@ export function UserBindingDialog(props: Props) {
 
             <Separator />
 
+            {user?.oidc_id && (
+              <p className='text-muted-foreground text-sm' role='note'>
+                {t(
+                  'This account is managed by your identity provider. Manage your sign-in details and security in the identity center.'
+                )}
+              </p>
+            )}
             <ScrollArea className='max-h-[50vh]'>
               {displayedBindings.length === 0 ? (
                 <p className='text-muted-foreground py-4 text-center text-sm'>
@@ -433,7 +440,7 @@ export function UserBindingDialog(props: Props) {
                           </p>
                         </div>
                       </div>
-                      {binding.isBound && (
+                      {binding.isBound && !user?.oidc_id && (
                         <Button
                           variant='ghost'
                           size='sm'

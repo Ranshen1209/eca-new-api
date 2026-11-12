@@ -46,12 +46,14 @@ import { handleServerError } from '@/lib/handle-server-error'
 import { AuthOperationError } from '@/lib/secure-verification'
 import { createServerError } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
 
 export function ForgotPasswordForm({
   className,
   ...props
 }: React.HTMLAttributes<HTMLFormElement>) {
   const { t } = useTranslation()
+  const identityManaged = useAuthStore((s) => Boolean(s.auth.user?.oidc_id))
   const [isLoading, setIsLoading] = useState(false)
 
   const {
@@ -82,7 +84,11 @@ export function ForgotPasswordForm({
       if (res?.success) {
         form.reset()
         startCountdown()
-        toast.success(t('Reset email sent, please check your inbox'))
+        toast.success(
+          t(
+            'If this local account supports password recovery, a reset email will be sent.'
+          )
+        )
       } else {
         handleServerError(
           createServerError(res, t('Failed to send reset email'))
@@ -97,8 +103,23 @@ export function ForgotPasswordForm({
     }
   }
 
+  if (identityManaged) {
+    return (
+      <p className='text-muted-foreground text-sm' role='note'>
+        {t(
+          'This account is managed by your identity provider. Manage your sign-in details and security in the identity center.'
+        )}
+      </p>
+    )
+  }
+
   return (
     <Form {...form}>
+      <p className='text-muted-foreground mb-4 text-sm' role='note'>
+        {t(
+          'For identity center accounts, recover your password in the identity center. This form is only for local operational accounts.'
+        )}
+      </p>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
         className={cn('grid gap-2', className)}

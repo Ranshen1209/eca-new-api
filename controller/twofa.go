@@ -20,6 +20,9 @@ type Verify2FARequest struct {
 }
 
 func Setup2FA(c *gin.Context) {
+	if !requireLocalAccountManagement(c, c.GetInt("id")) {
+		return
+	}
 	authorization := middleware.RequireSecurityProof(c, service.VerificationOperation{Scope: service.VerificationScopeTwoFASetup})
 	if authorization == nil {
 		return
@@ -35,6 +38,9 @@ func Setup2FA(c *gin.Context) {
 }
 
 func Enable2FA(c *gin.Context) {
+	if !requireLocalAccountManagement(c, c.GetInt("id")) {
+		return
+	}
 	identity, ok := middleware.GetStepUpIdentity(c)
 	if !ok {
 		writeSecurityOperationError(c, service.ErrAuthTokenInvalid)
@@ -60,6 +66,9 @@ func Enable2FA(c *gin.Context) {
 
 // Disable2FA 禁用2FA
 func Disable2FA(c *gin.Context) {
+	if !requireLocalAccountManagement(c, c.GetInt("id")) {
+		return
+	}
 	if middleware.RequireSecurityProof(c, service.VerificationOperation{Scope: service.VerificationScopeTwoFADisable}) == nil {
 		return
 	}
@@ -83,6 +92,9 @@ func Disable2FA(c *gin.Context) {
 
 // Get2FAStatus 获取用户2FA状态
 func Get2FAStatus(c *gin.Context) {
+	if !requireLocalAccountManagement(c, c.GetInt("id")) {
+		return
+	}
 	userId := c.GetInt("id")
 
 	twoFA, err := model.GetTwoFAByUserId(userId)
@@ -119,6 +131,9 @@ func Get2FAStatus(c *gin.Context) {
 
 // RegenerateBackupCodes 重新生成备用码
 func RegenerateBackupCodes(c *gin.Context) {
+	if !requireLocalAccountManagement(c, c.GetInt("id")) {
+		return
+	}
 	if middleware.RequireSecurityProof(c, service.VerificationOperation{Scope: service.VerificationScopeTwoFABackupCodes}) == nil {
 		return
 	}
@@ -192,6 +207,10 @@ func AdminDisable2FA(c *gin.Context) {
 		return
 	}
 
+	if targetUser.IdentityManaged() {
+		writeSecurityOperationError(c, model.ErrIdentityManaged)
+		return
+	}
 	myRole := c.GetInt("role")
 	if !canManageTargetRole(myRole, targetUser.Role) {
 		common.ApiErrorT(c, "No permission to change the 2FA settings of users at the same or higher level")

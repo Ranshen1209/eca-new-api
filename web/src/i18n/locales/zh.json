@@ -7358,7 +7358,12 @@
     "Zhipu": "智谱",
     "Zhipu GLM": "智谱GLM",
     "Zhipu V4": "智谱 V4",
-    "Zoom": "缩放"
+    "Zoom": "缩放",
+    "This account is managed by your identity provider. Manage your sign-in details and security in the identity center.": "此账号由统一身份中心管理。请在统一身份中心管理登录资料、密码和安全验证。",
+    "View Bindings": "查看身份绑定",
+    "For identity center accounts, recover your password in the identity center. This form is only for local operational accounts.": "统一身份账号请在统一身份中心找回密码。此表单仅用于本地运维账号。",
+    "If this local account supports password recovery, a reset email will be sent.": "如果此本地账号支持密码找回，系统将发送重置邮件。",
+    "OAuth verification requires a browser sign-in. Continue in the browser to verify your identity.": "请在浏览器中登录并通过统一身份中心验证身份。"
   },
   "Internal company allowance (not an actual payment): added {{credit}}, balance {{before}} → {{after}}": "公司内部自动补额（非实际支付）：增加 {{credit}}，余额 {{before}} → {{after}}"
 }

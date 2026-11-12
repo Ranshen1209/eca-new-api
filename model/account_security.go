@@ -31,6 +31,9 @@ func ChangeUserPassword(identity AuthSessionIdentity, update *User, firstPasswor
 		if err := tx.First(&current, identity.UserID).Error; err != nil {
 			return err
 		}
+		if current.IdentityManaged() {
+			return ErrIdentityManaged
+		}
 		if firstPassword != (current.Password == "") {
 			return ErrAccountPasswordState
 		}

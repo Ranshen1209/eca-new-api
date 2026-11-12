@@ -81,6 +81,9 @@ func GenerateOAuthCode(c *gin.Context) {
 		userID = identity.UserID
 		sessionID = identity.SessionID
 		if request.Intent == model.AuthFlowIntentBind {
+			if !requireLocalAccountManagement(c, identity.UserID) {
+				return
+			}
 			defer func() {
 				recordUserSecurityAudit(c, userID, "user.binding_start", map[string]any{"provider": request.Provider, "success": bindingStarted})
 			}()
@@ -348,6 +351,9 @@ func handleOAuthBind(c *gin.Context, providerName string, provider oauth.Provide
 	identity, ok := middleware.GetSessionAuthIdentity(c)
 	if !ok {
 		writeSecurityOperationError(c, service.ErrAuthTokenInvalid)
+		return false, false
+	}
+	if !requireLocalAccountManagement(c, identity.UserID) {
 		return false, false
 	}
 	var payload oauthFlowPayload

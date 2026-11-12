@@ -7358,7 +7358,11 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "This account is managed by your identity provider. Manage your sign-in details and security in the identity center.": "This account is managed by your identity provider. Manage your sign-in details and security in the identity center.",
+    "View Bindings": "View Bindings",
+    "For identity center accounts, recover your password in the identity center. This form is only for local operational accounts.": "For identity center accounts, recover your password in the identity center. This form is only for local operational accounts.",
+    "If this local account supports password recovery, a reset email will be sent.": "If this local account supports password recovery, a reset email will be sent."
   },
   "Internal company allowance (not an actual payment): added {{credit}}, balance {{before}} → {{after}}": "Internal company allowance (not an actual payment): added {{credit}}, balance {{before}} → {{after}}"
 }

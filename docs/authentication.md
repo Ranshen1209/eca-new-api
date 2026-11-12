@@ -2,6 +2,25 @@
 
 面板鉴权采用短期 Access Token、HttpOnly Refresh Cookie 与服务端登录会话控制面的组合。面板请求不再依赖 Gin session，也不再要求 `New-Api-User` 请求头。
 
+## OIDC 主身份只读
+
+持久 `oidc_id` 非空的账号由统一身份管理，包括已绑定 OIDC 的管理员。个人安全页不渲染本地密码、邮箱/登录绑定、TOTP、Passkey 和自助删除入口；管理员只能查看其绑定，不能代改用户名、主登录邮箱、密码或清除身份/本地安全因子。身份中心自身的账号管理不受影响。未绑定 OIDC 的运维账号继续使用既有本地认证。
+
+| 已核对入口/API | OIDC 用户行为 |
+| --- | --- |
+| `PUT /api/user/self`、管理员 `PUT /api/user` | 拒绝用户名、主邮箱与密码改写；语言、侧栏、展示名及业务授权保留 |
+| `/api/reset_password`、`/api/user/reset` | 不发送本地重置邮件；旧重置凭证不能改密，公开响应避免枚举账号 |
+| `/api/oauth/email/bind*`、WeChat 绑定、OAuth `intent=bind`/解绑 | 开始、回调及继续请求均拒绝；已有身份绑定保持 |
+| `/api/user/2fa/*`、`/api/user/passkey*`及管理员重置接口 | 拒绝本地安全因子管理，含既有流程的继续请求 |
+| 本地密码、Passkey、其他 OAuth 登录及待完成登录流程 | OIDC 绑定用户仅接受 `oauth:oidc`，不追加应用本地 MFA |
+| 业务访问令牌、API Key、渠道密钥、会话与偏好 | 功能保留；受管账号的敏感操作仅允许通过 OIDC 重新认证 |
+
+服务端从数据库判断实际目标账号，使用 `403 IDENTITY_MANAGED` 拒绝受限操作，不依赖 UI 隐藏或调用者自报身份。找回密码保持通用成功文案，避免泄漏账号类型。业务访问令牌不能代替浏览器 OIDC 验证；未提供账号中心链接时，明确提示到统一身份中心管理，不拼接未经验证的地址。既有本地因子和身份绑定不删除。
+
+本机验证：`GOTOOLCHAIN=go1.26.10 go test -p 2 ./controller ./service -run '^TestOIDCIdentity' -count=1`；前端受管账号、管理员只读绑定、原账号安全及敏感操作回归；类型检查和正式构建；本地合成员工页面的桌面/390px/键盘走查。未发送模型生成请求。生产发布前须保留现有部署的 OIDC 新鲜重新认证、注销、员工准入及流式响应修复，并分别取得审阅和部署授权。
+
+下述本地密码、MFA 与 Passkey 说明仅适用于未绑定 OIDC 的账号；受管账号优先遵循上节。
+
 ## 鉴权模型
 
 - Access Token 是有效期 15 分钟的 JWT，只保存在浏览器内存中，通过 `Authorization: Bearer <token>` 发送。

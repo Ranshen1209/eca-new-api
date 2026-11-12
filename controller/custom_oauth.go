@@ -513,6 +513,9 @@ func GetUserOAuthBindingsByAdmin(c *gin.Context) {
 
 // UnbindCustomOAuth unbinds a custom OAuth provider from the current user
 func UnbindCustomOAuth(c *gin.Context) {
+	if !requireLocalAccountManagement(c, c.GetInt("id")) {
+		return
+	}
 	identity, ok := middleware.GetStepUpIdentity(c)
 	if !ok {
 		writeSecurityOperationError(c, service.ErrAuthTokenInvalid)
@@ -567,6 +570,10 @@ func UnbindCustomOAuthByAdmin(c *gin.Context) {
 		return
 	}
 
+	if targetUser.IdentityManaged() {
+		writeSecurityOperationError(c, model.ErrIdentityManaged)
+		return
+	}
 	myRole := c.GetInt("role")
 	if !canManageTargetRole(myRole, targetUser.Role) {
 		common.ApiErrorMsg(c, "no permission")

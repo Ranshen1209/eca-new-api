@@ -53,6 +53,12 @@ func StartLoginVerification(user *model.User, loginMethod string, migration *Leg
 	if state.Status != common.UserStatusEnabled || state.AuthVersion != user.AuthVersion {
 		return nil, model.ErrUserSessionInactive
 	}
+	if state.IdentityManaged {
+		if loginMethod != "oauth:oidc" && loginMethod != "oidc" {
+			return nil, model.ErrIdentityManaged
+		}
+		return nil, nil
+	}
 	methods, err := securityVerificationPolicy(VerificationScopeLogin, *state)
 	if err != nil || len(methods) == 0 {
 		if err == nil && migration != nil {
@@ -111,6 +117,9 @@ func RequireLoginVerification(token, method string) (*LoginVerification, error) 
 }
 
 func requireLoginVerificationMethod(state *model.UserVerificationState, method string) error {
+	if state.IdentityManaged {
+		return model.ErrIdentityManaged
+	}
 	methods, err := securityVerificationPolicy(VerificationScopeLogin, *state)
 	if err != nil {
 		return err

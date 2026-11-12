@@ -19,6 +19,9 @@ type emailBindRequest struct {
 }
 
 func EmailBindStart(c *gin.Context) {
+	if !requireLocalAccountManagement(c, c.GetInt("id")) {
+		return
+	}
 	identity, ok := middleware.GetStepUpIdentity(c)
 	if !ok {
 		writeSecurityOperationError(c, service.ErrAuthTokenInvalid)
@@ -57,6 +60,9 @@ func EmailBindStart(c *gin.Context) {
 }
 
 func EmailBindResend(c *gin.Context) {
+	if !requireLocalAccountManagement(c, c.GetInt("id")) {
+		return
+	}
 	identity, ok := middleware.GetStepUpIdentity(c)
 	if !ok {
 		writeSecurityOperationError(c, service.ErrAuthTokenInvalid)
@@ -81,6 +87,9 @@ func EmailBindResend(c *gin.Context) {
 }
 
 func EmailBind(c *gin.Context) {
+	if !requireLocalAccountManagement(c, c.GetInt("id")) {
+		return
+	}
 	identity, ok := middleware.GetStepUpIdentity(c)
 	if !ok {
 		writeSecurityOperationError(c, service.ErrAuthTokenInvalid)

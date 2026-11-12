@@ -56,6 +56,10 @@
 
 ---
 
+## OIDC account management
+
+OIDC-linked accounts use the identity provider for sign-in details and security. See [authentication](docs/authentication.md#oidc-主身份只读) for the protected endpoints, operational account exception, and local verification. This source candidate requires integration with the deployed authentication baseline before release.
+
 ## 📝 Project Description
 
 New API is a self-hosted AI gateway for applications, agents, and teams. Connect upstream model services, expose a consistent API to your clients, and manage routing, access, usage, and costs in one place.
